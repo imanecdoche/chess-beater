@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/RelWithDebInfo/206n731i/armeabi-v7a",
+  "command": "/home/fatihfarhat/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=armv7-none-linux-androideabi29 --sysroot=/home/fatihfarhat/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DNO_PREFETCH -DUSE_NEON -Dchessbeater_engine_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -O2 -g -DNDEBUG -fPIC -O3 -flto -mfpu=neon -mfloat-abi=softfp -fomit-frame-pointer -fno-exceptions -fno-rtti -Wall -Wextra -pthread -std=c++20 -o CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o -c \"/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-bridge.cpp\"",
+  "file": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-bridge.cpp"
+},
+{
+  "directory": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/RelWithDebInfo/206n731i/armeabi-v7a",
+  "command": "/home/fatihfarhat/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=armv7-none-linux-androideabi29 --sysroot=/home/fatihfarhat/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DNO_PREFETCH -DUSE_NEON -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -O2 -g -DNDEBUG -fPIE -O3 -flto -mfpu=neon -mfloat-abi=softfp -fomit-frame-pointer -fno-exceptions -fno-rtti -Wall -Wextra -pthread -std=c++20 -o CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o -c \"/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-standalone.cpp\"",
+  "file": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-standalone.cpp"
+}
+]

@@ -1,0 +1,6 @@
+# ninja log v5
+9775	11948	1788030286068800300	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/RelWithDebInfo/206n731i/obj/armeabi-v7a/libchessbeater_engine.so	6cfed6492203bc27
+48	9768	1788030283835152500	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	5f0034806374c9af
+0	25	0	clean	369d77807b1427dc
+6	317	1788105359347899500	build.ninja	537677f733477eeb
+0	6	0	clean	369d77807b1427dc

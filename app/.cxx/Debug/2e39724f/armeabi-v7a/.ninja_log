@@ -1,0 +1,16 @@
+# ninja log v5
+6	9283	1788085817982005800	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+9288	12489	1788085821251934600	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/libchessbeater_engine.so	41fd30779fb45185
+57	7892	1788086371169367900	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+7914	11073	1788086374337039300	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/stockfish_bin	1a52c5563d813ac9
+7	6673	1788090917499338300	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/stockfish_bin	1a52c5563d813ac9
+6	14506	1788090925301759600	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/libchessbeater_engine.so	41fd30779fb45185
+0	24	0	clean	369d77807b1427dc
+38	14867	1788105411430152200	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+36	14991	1788105411391080800	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+14872	21557	1788105418109190800	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/stockfish_bin	1a52c5563d813ac9
+14993	21884	1788105418367461500	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/libchessbeater_engine.so	41fd30779fb45185
+7	3024	1788110701742341900	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+6	3609	1788110702325745100	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+3028	4304	1788110703022404200	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/stockfish_bin	1a52c5563d813ac9
+3609	4905	1788110703626789600	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/armeabi-v7a/libchessbeater_engine.so	41fd30779fb45185

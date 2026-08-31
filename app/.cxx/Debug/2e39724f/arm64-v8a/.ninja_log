@@ -1,0 +1,16 @@
+# ninja log v5
+7	10888	1788085803989319400	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+10891	15088	1788085808297562900	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/libchessbeater_engine.so	7cdf30aac938cacc
+59	8299	1788086358381044100	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+8304	12015	1788086362100371400	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/stockfish_bin	4d6e1ea1cf106612
+47	12401	1788090909592934000	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/stockfish_bin	4d6e1ea1cf106612
+38	12641	1788090909872107200	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/libchessbeater_engine.so	7cdf30aac938cacc
+1	32	0	clean	369d77807b1427dc
+13	11199	1788105387135568700	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+11	14608	1788105390529516100	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+11209	15891	1788105391878045000	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/stockfish_bin	4d6e1ea1cf106612
+14609	19004	1788105394990807100	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/libchessbeater_engine.so	7cdf30aac938cacc
+7	3680	1788110696825102100	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+6	4122	1788110697281947900	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+3684	5079	1788110698247498000	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/stockfish_bin	4d6e1ea1cf106612
+4125	5457	1788110698611602500	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/libchessbeater_engine.so	7cdf30aac938cacc

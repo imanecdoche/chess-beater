@@ -1,0 +1,1 @@
+/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/RelWithDebInfo/206n731i/obj/arm64-v8a

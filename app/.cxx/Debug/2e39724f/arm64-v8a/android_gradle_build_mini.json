@@ -1,0 +1,33 @@
+{
+  "buildFiles": [
+    "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/fatihfarhat/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/fatihfarhat/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "chessbeater_engine::@6890427a1f51a3e7e1df": {
+      "artifactName": "chessbeater_engine",
+      "abi": "arm64-v8a",
+      "output": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/libchessbeater_engine.so",
+      "runtimeFiles": []
+    },
+    "stockfish_bin::@6890427a1f51a3e7e1df": {
+      "artifactName": "stockfish_bin",
+      "abi": "arm64-v8a",
+      "output": "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/2e39724f/obj/arm64-v8a/stockfish_bin",
+      "runtimeFiles": []
+    }
+  }
+}

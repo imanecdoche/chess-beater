@@ -1,0 +1,20 @@
+# ninja log v5
+1	7936	1788091988108016700	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+1	9368	1788091989531573100	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+8177	12813	1788091993015488964	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/libchessbeater_engine.so	e1d58c07cd1ddf91
+9382	13023	1788091993243494096	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/stockfish_bin	3834cbb511d4a3c4
+0	20	0	clean	369d77807b1427dc
+17	10378	1788105016891582300	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+13	12723	1788105019088544700	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+10380	15293	1788105021806162340	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/stockfish_bin	3834cbb511d4a3c4
+12723	17241	1788105023776204709	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/libchessbeater_engine.so	e1d58c07cd1ddf91
+1	76	0	clean	369d77807b1427dc
+13	13418	1788105175370757800	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+13	15359	1788105177427462100	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+15360	19771	1788105181776599525	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/stockfish_bin	3834cbb511d4a3c4
+13420	21989	1788105183358633488	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/libchessbeater_engine.so	e1d58c07cd1ddf91
+2	25	0	clean	369d77807b1427dc
+12	19063	1788105293173118100	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	f49771d79fe3577e
+13	22987	1788105297027631300	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	2a605a95ded58566
+19068	24425	1788105298586105863	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/libchessbeater_engine.so	e1d58c07cd1ddf91
+22988	28786	1788105302958199626	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/armeabi-v7a/stockfish_bin	3834cbb511d4a3c4

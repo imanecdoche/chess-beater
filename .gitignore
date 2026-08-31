@@ -1,0 +1,18 @@
+# Android build artifacts
+app/build/
+app/**/*.apk
+app/**/*.so
+
+# Stockfish large binary that exceeds GitHub limits
+stockfish/stockfish-ubuntu-x86-64-avx2
+
+# Local Gradle files
+.gradle/
+*.iml
+
+# IDE files
+.idea/
+*.log
+
+# Misc
+*.DS_Store

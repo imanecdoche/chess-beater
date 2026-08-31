@@ -1,0 +1,20 @@
+# ninja log v5
+39	8699	1788091975869233900	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+35	9089	1788091976251703300	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+9090	11794	1788091978970172723	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/libchessbeater_engine.so	55e6abbbeec66e2a
+8759	11794	1788091978969172700	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/stockfish_bin	859e3ec39601c203
+0	10	0	clean	369d77807b1427dc
+15	11594	1788105001276556900	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+13	12158	1788105001800665900	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+11628	15706	1788105005388809215	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/stockfish_bin	859e3ec39601c203
+12159	16550	1788105006265828081	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/libchessbeater_engine.so	55e6abbbeec66e2a
+0	68	0	clean	369d77807b1427dc
+22	11178	1788105146184833700	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+11183	15912	1788105150865935837	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/stockfish_bin	859e3ec39601c203
+19	19667	1788105154579746300	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+19672	26306	1788105161305160002	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/libchessbeater_engine.so	55e6abbbeec66e2a
+3	178	0	clean	369d77807b1427dc
+24	17102	1788105267804897300	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	462e6330674ce4
+22	18971	1788105269706225300	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4ee662513b6b528b
+17105	21091	1788105271838532169	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/stockfish_bin	859e3ec39601c203
+18975	22998	1788105273733572819	/tmp/chessbeater_build/app/intermediates/cxx/Debug/3z4cu2b4/obj/arm64-v8a/libchessbeater_engine.so	55e6abbbeec66e2a
