@@ -86,12 +86,12 @@ fun SettingsScreen(onBack: () -> Unit) {
     var headerEyeSizeDp by remember { mutableStateOf(sharedPrefs.getSafeInt("size_header_eye_dp", 34).coerceIn(24, 52)) }
     var headerMenuSizeDp by remember { mutableStateOf(sharedPrefs.getSafeInt("size_header_menu_dp", 34).coerceIn(24, 52)) }
 
-    var pieceAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("piece_alpha", sharedPrefs.getSafeFloat("pieces_alpha", 1.0f)).coerceIn(0.05f, 1.0f)) }
-    var gridAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("grid_alpha", sharedPrefs.getSafeFloat("board_alpha", 0.85f)).coerceIn(0.0f, 1.0f)) }
-    var arrowAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("arrow_alpha", 0.90f).coerceIn(0.05f, 1.0f)) }
-    var highlightAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("highlight_alpha", 0.50f).coerceIn(0.05f, 1.0f)) }
-    var moveGuideAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("move_guide_alpha", sharedPrefs.getSafeFloat("guide_dots_alpha", 0.80f)).coerceIn(0.05f, 1.0f)) }
-    var floatingEyeAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("floating_eye_alpha", 0.85f).coerceIn(0.05f, 1.0f)) }
+    var pieceAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_pieces", sharedPrefs.getSafeFloat("piece_alpha", sharedPrefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1.0f)) }
+    var gridAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("board_alpha", sharedPrefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0.0f, 1.0f)) }
+    var arrowAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_arrows", sharedPrefs.getSafeFloat("arrow_alpha", 0.90f)).coerceIn(0.05f, 1.0f)) }
+    var highlightAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_highlights", sharedPrefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1.0f)) }
+    var moveGuideAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_dots", sharedPrefs.getSafeFloat("move_guide_alpha", sharedPrefs.getSafeFloat("guide_dots_alpha", 0.80f))).coerceIn(0.05f, 1.0f)) }
+    var floatingEyeAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_floating_eye", sharedPrefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1.0f)) }
 
     var isBoardLocked by remember { mutableStateOf(sharedPrefs.getBoolean("board_is_locked", true)) }
     var isGhostControlsEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("ghost_controls_enabled", false)) }
@@ -117,12 +117,19 @@ fun SettingsScreen(onBack: () -> Unit) {
             .putInt("size_floating_eye_dp", floatingEyeSizeDp)
             .putInt("size_header_eye_dp", headerEyeSizeDp)
             .putInt("size_header_menu_dp", headerMenuSizeDp)
+            .putFloat("alpha_pieces", pieceAlpha)
             .putFloat("piece_alpha", pieceAlpha)
-            .putFloat("grid_alpha", gridAlpha)
+            .putFloat("pieces_alpha", pieceAlpha)
             .putFloat("board_alpha", gridAlpha)
+            .putFloat("grid_alpha", gridAlpha)
+            .putFloat("alpha_arrows", arrowAlpha)
             .putFloat("arrow_alpha", arrowAlpha)
+            .putFloat("alpha_highlights", highlightAlpha)
             .putFloat("highlight_alpha", highlightAlpha)
+            .putFloat("alpha_dots", moveGuideAlpha)
             .putFloat("move_guide_alpha", moveGuideAlpha)
+            .putFloat("guide_dots_alpha", moveGuideAlpha)
+            .putFloat("alpha_floating_eye", floatingEyeAlpha)
             .putFloat("floating_eye_alpha", floatingEyeAlpha)
             .putBoolean("board_is_locked", isBoardLocked)
             .putBoolean("ghost_controls_enabled", isGhostControlsEnabled)

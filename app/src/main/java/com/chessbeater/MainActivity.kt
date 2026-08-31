@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                 onToggleMiniBoard = { viewModel.toggleInteractiveMiniBoard(it) },
                 onToggleGhostMode = { viewModel.toggleGhostMode(it) },
                 onToggleTouchForwarding = { viewModel.toggleTouchForwarding(it) },
+                onToggleQuickAlignment = { viewModel.toggleQuickAlignment(it) },
                 onToggleSaveSessionLogs = { viewModel.toggleSaveSessionLogs(it) },
                 onDeleteLog = { viewModel.deleteLog(it) },
                 onClearAllLogs = { viewModel.clearAllLogs() },

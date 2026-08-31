@@ -1,0 +1,1293 @@
+diff --git a/.agents/RULES.md b/.agents/RULES.md
+index b1b5459..afca12f 100644
+--- a/.agents/RULES.md
++++ b/.agents/RULES.md
+@@ -927,39 +927,37 @@ File ini adalah catatan instruksi dan aturan mutlak untuk proyek **Chess Beater*
+       * Menyediakan extension function `getSafeFloat`, `getSafeInt`, `getSafeBoolean`, dan `getSafeString` yang kebal terhadap `ClassCastException` di seluruh komponen proyek.
+     - Perbaikan Crash Service pada `MiniBoardOverlayService.kt` & `InteractiveBoardOverlayView.kt`:
+       * Mengganti pembacaan SharedPreferences `auto_show_delay_sec`, `auto_hide_delay_sec`, dan visual bounds menjadi `getSafeFloat` dan `getSafeBoolean`.
+-      * Menghilangkan crash fatal saat auto-hide/auto-show terpicu setelah kalibrasi cepat (hold 2 detik) atau saat rekomendasi engine selesai.
+-    - Validasi & Deploy:
+-      * `./gradlew compileDebugKotlin` & `./gradlew installDebug`.
+-
+-94. **Sprint 94 (2026-08-31): Kunci Pemilihan Bidak Berdasarkan Kepemilikan & Validasi Langkah Legal Catur**
+-    - Kunci Pemilihan Bidak Berdasarkan Kepemilikan (`InteractiveBoardOverlayView.kt`):
+-      * Di `handleBoardTap()` / sentuhan papan:
+-        - Cek giliran user: hanya izinkan sentuhan jika giliran aktif sesuai dengan giliran user (`currentTurn == opponentColor` saat bukan mode koreksi).
+-        - Kunci Kepemilikan Bidak: Bidak Putih HANYA dapat disentuh/dipilih oleh pemain Putih (`isPieceWhite == userIsWhite`), dan Bidak Hitam HANYA dapat disentuh/dipilih oleh pemain Hitam. Sentuhan pada bidak lawan/mesin ditolak seketika (`return`).
+-    - Validasi Langkah Legal Catur Sebelum Eksekusi:
+-      * Validasi bahwa langkah yang dicoba (`from` ke `to`) wajib valid sesuai aturan catur murni (`ChessLogic.isMoveLegal`), termasuk pencegahan langkah ilegal raja, pion mundur, benteng diagonal, dan pin raja.
+-      * Langkah ilegal ditolak tanpa mengubah FEN atau memutar giliran.
+-    - Guardrails Ketat:
+-      * Menjaga fungsi `dispatchTouchEvent()` agar touch pass-through tetap utuh.
+-      * Tidak memanggil `resetBoard()` saat membuka atau menutup dialog pengaturan.
+-    - Validasi & Deploy:
+-      * `./gradlew compileDebugKotlin` & `./gradlew installDebug`.
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
++95. **Sprint 95 (2026-08-31): Interaksi Mode Koreksi Papan, Transparansi 50%, Sinkronisasi Slider Transparansi, Toggle Kalibrasi Cepat, & Auto-Reset Ganti Sisi**
++    - Interaksi Sentuh & Tombol Selesai Mode Koreksi (`InteractiveBoardOverlayView.kt`):
++      * Memperbaiki pembaruan bounding box `editorBounds` agar tidak ter-shadow oleh variabel lokal.
++      * Menetapkan urutan prioritas utama di `dispatchTouchEvent`: Jika `isCorrectionMode == true`, konsumsi touch pada `editorBounds` dan `boardRect` secara eksklusif dan return `true` agar tidak tembus ke game bawahnya.
++      * Tombol "âœ… Selesai" memicu `exitBoardCorrectionMode()`, memulihkan alpha bidak normal, dan menutup panel editor.
++    - Transparansi Bidak 50% Mode Koreksi (`InteractiveBoardOverlayView.kt`):
++      * Saat masuk mode koreksi (`enterBoardCorrectionMode()`), alpha bidak diatur ke 128 (50% transparansi).
++      * Saat keluar mode koreksi (`exitBoardCorrectionMode()`), alpha bidak dipulihkan dari SharedPreferences (`alpha_pieces`).
++    - Sinkronisasi Slider Transparansi Granular (`SettingsOverlayView.kt`, `SettingsActivity.kt`, `InteractiveBoardOverlayView.kt`):
++      * Menyamakan key SharedPreferences: `alpha_pieces`, `board_alpha`, `alpha_arrows`, `alpha_highlights`, `alpha_dots`, `alpha_floating_eye`.
++      * SeekBar listener menyimpan nilai seketika dengan `.apply()` dan memicu `reloadVisualSettingsOnly()` pada canvas overlay tanpa menyentuh FEN.
++    - Toggle Kalibrasi Cepat Startup (`DashboardScreen.kt`, `MainActivity.kt`, `DashboardViewModel.kt`, `MiniBoardOverlayService.kt`):
++      * Menambahkan Switch "âš¡ Kalibrasi Cepat Saat Startup" (`quick_alignment_enabled`, default: `true`).
++      * `MiniBoardOverlayService.kt` memeriksa preferensi: jika aktif menampilkan Quick Alignment HUD, jika dinonaktifkan langsung siap dalam mode Floating Eye tersembunyi.
++    - Auto-Reset Game Otomatis Saat Ganti Pihak (`InteractiveBoardOverlayView.kt` & `MiniBoardOverlayService.kt`):
++      * Menambahkan `switchSideAndResetGame(opponentIsWhite: Boolean)` yang mereset total FEN ke posisi awal, mengosongkan riwayat, mengatur warna giliran, dan memicu langkah pertama Stockfish jika mesin memegang Putih.
++    - Guardrails Keselamatan:
++      * Menjaga touch pass-through (`return false` di luar overlay).
++      * Tidak memanggil `resetGame()` saat user hanya membuka/menutup dialog pengaturan biasa.
++      * Logika validasi langkah legal catur dan giliran mesin tetap utuh dan aman.
++
++96. **Sprint 96 (2026-08-31): Perbaikan Total Freeze Mode Koreksi Papan & Layout Metrics Eksplisit di InteractiveBoardOverlayView.kt**
++    - Hitung Ulang Bounds Panel & Palet Bidak Eksplisit (`InteractiveBoardOverlayView.kt`):
++      * Menambahkan `setupCorrectionLayoutMetrics()` yang mengukur `correctionPanelBounds`, `finishButtonBounds`, `clearBoardButtonBounds`, dan `palettePieceBounds` (6x2 piece grid: P,N,B,R,Q,K dan p,n,b,r,q,k).
++      * Memanggil `setupCorrectionLayoutMetrics()` setiap kali `enterCorrectionMode()` / `enterBoardCorrectionMode()` dipanggil dan saat layout bounds diperbarui / onDraw.
++    - Penanganan Event Sentuh Mode Koreksi Mandiri (`InteractiveBoardOverlayView.kt`):
++      * Mengimplementasikan `handleCorrectionTouch(event: MotionEvent): Boolean` untuk menangani pemilihan bidak dari palet, penempatan/penghapusan bidak pada petak papan (`setPieceAtSquare`, `removePieceAtSquare`), pengosongan papan (`clearAllPiecesForCorrection`), dan tombol Selesai (`exitCorrectionMode`).
++      * Mengaitkan langsung di `dispatchTouchEvent` prioritas utama: `if (isCorrectionMode || isCorrectionModeActive) return handleCorrectionTouch(event)`.
++    - Sinkronisasi Hasil Koreksi FEN & Controller (`InteractiveBoardOverlayView.kt`):
++      * Pada `exitCorrectionMode()` / `exitBoardCorrectionMode()`, posisikan FEN baru (`generateFenFromCurrentBoard()` / `generateFen()`), sinkronkan ke `chessGameController` jika ada, pulihkan transparansi normal (`loadAlphaPreferences()`), dan picu evaluasi giliran Stockfish jika relevan.
++    - Guardrails Keselamatan:
++      * Dilarang mengutak-atik logika validasi catur di luar mode koreksi.
++      * Touch pass-through normal game tetap bekerja 100% saat bukan mode koreksi.
+ 
+diff --git a/app/.cxx/Debug/2e39724f/arm64-v8a/configure_fingerprint.bin b/app/.cxx/Debug/2e39724f/arm64-v8a/configure_fingerprint.bin
+index f6154df..1a778ba 100644
+--- a/app/.cxx/Debug/2e39724f/arm64-v8a/configure_fingerprint.bin
++++ b/app/.cxx/Debug/2e39724f/arm64-v8a/configure_fingerprint.bin
+@@ -2,28 +2,28 @@ C/C++ Structured Logu
+ s
+ q/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/additional_project_files.txtC
+ A
+-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	¡Éÿ·…4 ¾Ë’…4r
++?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	Í£èÁ…4 ¾Ë’…4r
+ p
+-n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/android_gradle_build.json	¡Éÿ·…4ã åË’…4w
++n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/android_gradle_build.json	Í£èÁ…4ã åË’…4w
+ u
+-s/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/android_gradle_build_mini.json	¡Éÿ·…4§	 Í’…4d
++s/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/android_gradle_build_mini.json	Í£èÁ…4§	 Í’…4d
+ b
+-`/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build.ninja	¡Éÿ·…4­s „Ê’…4h
++`/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build.ninja	Í£èÁ…4­s „Ê’…4h
+ f
+-d/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build.ninja.txt	¢Éÿ·…4m
++d/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build.ninja.txt	Î£èÁ…4m
+ k
+-i/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build_file_index.txt	¢Éÿ·…4R ñÆ×ù„4n
++i/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/build_file_index.txt	Î£èÁ…4R ñÆ×ù„4n
+ l
+-j/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/compile_commands.json	¢Éÿ·…4² ‚Ê’…4r
++j/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/compile_commands.json	Î£èÁ…4² ‚Ê’…4r
+ p
+-n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/compile_commands.json.bin	¢Éÿ·…4	Ü ‚Ê’…4x
++n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/compile_commands.json.bin	Î£èÁ…4	Ü ‚Ê’…4x
+ v
+-t/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/metadata_generation_command.txt	¢Éÿ·…4
++t/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/metadata_generation_command.txt	Î£èÁ…4
+ Û íÆ×ù„4k
+ i
+-g/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/prefab_config.json	¢Éÿ·…4( îÆ×ù„4p
++g/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/prefab_config.json	Î£èÁ…4( îÆ×ù„4p
+ n
+-l/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/symbol_folder_index.txt	¢Éÿ·…4k ïÆ×ù„4V
++l/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/arm64-v8a/symbol_folder_index.txt	Î£èÁ…4k ïÆ×ù„4V
+ T
+-R/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/CMakeLists.txt	¢Éÿ·…4û
++R/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/CMakeLists.txt	Ï£èÁ…4û
+  Îáé‘…4
+\ No newline at end of file
+diff --git a/app/.cxx/Debug/2e39724f/armeabi-v7a/configure_fingerprint.bin b/app/.cxx/Debug/2e39724f/armeabi-v7a/configure_fingerprint.bin
+index dd05fd0..f192761 100644
+--- a/app/.cxx/Debug/2e39724f/armeabi-v7a/configure_fingerprint.bin
++++ b/app/.cxx/Debug/2e39724f/armeabi-v7a/configure_fingerprint.bin
+@@ -2,28 +2,28 @@ C/C++ Structured Logw
+ u
+ s/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/additional_project_files.txtC
+ A
+-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	‹Ìÿ·…4 È‚’…4t
++?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	—ªèÁ…4 È‚’…4t
+ r
+-p/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/android_gradle_build.json	‹Ìÿ·…4ï •È‚’…4y
++p/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/android_gradle_build.json	—ªèÁ…4ï •È‚’…4y
+ w
+-u/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/android_gradle_build_mini.json	‹Ìÿ·…4³	 ´È‚’…4f
++u/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/android_gradle_build_mini.json	˜ªèÁ…4³	 ´È‚’…4f
+ d
+-b/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build.ninja	ŒÌÿ·…4át ¥Æ‚’…4j
++b/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build.ninja	˜ªèÁ…4át ¥Æ‚’…4j
+ h
+-f/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build.ninja.txt	ŒÌÿ·…4o
++f/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build.ninja.txt	˜ªèÁ…4o
+ m
+-k/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build_file_index.txt	ŒÌÿ·…4R ¹ˆØù„4p
++k/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/build_file_index.txt	˜ªèÁ…4R ¹ˆØù„4p
+ n
+-l/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/compile_commands.json	ŒÌÿ·…4  £Æ‚’…4t
++l/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/compile_commands.json	˜ªèÁ…4  £Æ‚’…4t
+ r
+-p/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/compile_commands.json.bin	ŒÌÿ·…4	¿ £Æ‚’…4z
++p/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/compile_commands.json.bin	˜ªèÁ…4	¿ £Æ‚’…4z
+ x
+-v/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/metadata_generation_command.txt	ŒÌÿ·…4
++v/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/metadata_generation_command.txt	˜ªèÁ…4
+ å ·ˆØù„4m
+ k
+-i/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/prefab_config.json	ŒÌÿ·…4( ¸ˆØù„4r
++i/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/prefab_config.json	˜ªèÁ…4( ¸ˆØù„4r
+ p
+-n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/symbol_folder_index.txt	ŒÌÿ·…4m ¸ˆØù„4V
++n/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/2e39724f/armeabi-v7a/symbol_folder_index.txt	™ªèÁ…4m ¸ˆØù„4V
+ T
+-R/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/CMakeLists.txt	ŒÌÿ·…4û
++R/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp/CMakeLists.txt	™ªèÁ…4û
+  Îáé‘…4
+\ No newline at end of file
+diff --git a/app/src/main/java/com/chessbeater/MainActivity.kt b/app/src/main/java/com/chessbeater/MainActivity.kt
+index 945add8..1c0df78 100644
+--- a/app/src/main/java/com/chessbeater/MainActivity.kt
++++ b/app/src/main/java/com/chessbeater/MainActivity.kt
+@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
+                 onToggleMiniBoard = { viewModel.toggleInteractiveMiniBoard(it) },
+                 onToggleGhostMode = { viewModel.toggleGhostMode(it) },
+                 onToggleTouchForwarding = { viewModel.toggleTouchForwarding(it) },
++                onToggleQuickAlignment = { viewModel.toggleQuickAlignment(it) },
+                 onToggleSaveSessionLogs = { viewModel.toggleSaveSessionLogs(it) },
+                 onDeleteLog = { viewModel.deleteLog(it) },
+                 onClearAllLogs = { viewModel.clearAllLogs() },
+diff --git a/app/src/main/java/com/chessbeater/overlay/InteractiveBoardOverlayView.kt b/app/src/main/java/com/chessbeater/overlay/InteractiveBoardOverlayView.kt
+index 7ef15ad..94c50b2 100644
+--- a/app/src/main/java/com/chessbeater/overlay/InteractiveBoardOverlayView.kt
++++ b/app/src/main/java/com/chessbeater/overlay/InteractiveBoardOverlayView.kt
+@@ -218,6 +218,20 @@ class InteractiveBoardOverlayView(
+     // 2-Column Settings Interactive Buttons & Toggles
+     private val statusBounds = RectF()
+     private val editorBounds = RectF()
++
++    val boardBounds: RectF
++        get() = boardRect
++
++    val finishButtonBounds = RectF()
++    val clearBoardButtonBounds = RectF()
++    val turnToggleButtonBounds = RectF()
++    val deleteToolButtonBounds = RectF()
++    val correctionPanelBounds = RectF()
++    val palettePieceBounds = mutableMapOf<Char, RectF>()
++    var selectedPalettePiece: Char?
++        get() = selectedEditorPiece
++        set(value) { selectedEditorPiece = value }
++
+     private val lockBoardToggleRect = RectF()
+     private val ghostControlsToggleRect = RectF()
+     private val humanizeToggleRect = RectF()
+@@ -478,14 +492,18 @@ class InteractiveBoardOverlayView(
+     }
+ 
+     fun reloadVisualSettings() {
+-        updateVisualPaintsOnly()
++        loadAlphaPreferences()
+     }
+ 
+     fun reloadVisualSettingsOnly() {
+-        updateVisualPaintsOnly()
++        loadAlphaPreferences()
+     }
+ 
+     fun updateVisualPaintsOnly() {
++        loadAlphaPreferences()
++    }
++
++    fun loadAlphaPreferences() {
+         try {
+             val prefs = context.getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+             val savedAlpha = prefs.getSafeFloat("overlay_alpha", 0.95f)
+@@ -494,13 +512,13 @@ class InteractiveBoardOverlayView(
+             isHighlightFilled = prefs.getSafeBoolean("highlight_is_filled", true)
+             fromSquareColor = prefs.getSafeInt("color_highlight_from", Color.parseColor("#00E5FF"))
+             toSquareColor = prefs.getSafeInt("color_highlight_to", Color.parseColor("#10B981"))
+-            pieceAlpha = prefs.getSafeFloat("pieces_alpha", prefs.getSafeFloat("piece_alpha", 1.0f))
+-            val boardAlpha = prefs.getSafeFloat("grid_alpha", prefs.getSafeFloat("board_alpha", 0.85f))
++            pieceAlpha = prefs.getSafeFloat("alpha_pieces", prefs.getSafeFloat("piece_alpha", prefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1.0f)
++            val boardAlpha = prefs.getSafeFloat("board_alpha", prefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0.0f, 1.0f)
+             gridAlpha = boardAlpha
+-            arrowAlpha = prefs.getSafeFloat("arrow_alpha", 0.95f)
+-            highlightAlpha = prefs.getSafeFloat("highlight_alpha", 0.50f)
+-            floatingEyeAlpha = prefs.getSafeFloat("floating_eye_alpha", 0.85f)
+-            moveGuideAlpha = prefs.getSafeFloat("guide_dots_alpha", prefs.getSafeFloat("move_guide_alpha", 0.80f))
++            arrowAlpha = prefs.getSafeFloat("alpha_arrows", prefs.getSafeFloat("arrow_alpha", 0.95f)).coerceIn(0.05f, 1.0f)
++            highlightAlpha = prefs.getSafeFloat("alpha_highlights", prefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1.0f)
++            floatingEyeAlpha = prefs.getSafeFloat("alpha_floating_eye", prefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1.0f)
++            moveGuideAlpha = prefs.getSafeFloat("alpha_dots", prefs.getSafeFloat("move_guide_alpha", prefs.getSafeFloat("guide_dots_alpha", 0.80f))).coerceIn(0.05f, 1.0f)
+             maxEloRating = prefs.getSafeInt("max_elo_rating", 3500)
+             sizeHeaderEyeDp = prefs.getSafeInt("size_header_eye_dp", 34)
+             sizeHeaderMenuDp = prefs.getSafeInt("size_header_menu_dp", 34)
+@@ -517,12 +535,22 @@ class InteractiveBoardOverlayView(
+             lightSqGhostPaint.alpha = gAlphaInt
+             darkSqGhostPaint.alpha = gAlphaInt
+ 
++            val pAlphaInt = (pieceAlpha * 255).roundToInt().coerceIn(0, 255)
++            pieceBitmapPaint.alpha = pAlphaInt
++            whitePieceFillPaint.alpha = pAlphaInt
++            whitePieceStrokePaint.alpha = pAlphaInt
++            blackPieceFillPaint.alpha = pAlphaInt
++            blackPieceStrokePaint.alpha = pAlphaInt
++
++            val aAlphaInt = (arrowAlpha * 255).roundToInt().coerceIn(0, 255)
++            arrowFillPaint.alpha = aAlphaInt
++            arrowStrokePaint.alpha = aAlphaInt
++
+             reloadBoardBounds()
+-            reloadBoardOrientation()
+             postInvalidate()
+-            Log.d("InteractiveBoard", "âœ… Visual paints only berhasil dimuat ulang (game state dipertahankan)!")
++            Log.d("InteractiveBoard", "âœ… Visual paints only & alpha preferences berhasil dimuat ulang!")
+         } catch (e: Exception) {
+-            Log.w("InteractiveBoard", "Gagal updateVisualPaintsOnly", e)
++            Log.w("InteractiveBoard", "Gagal loadAlphaPreferences", e)
+         }
+     }
+ 
+@@ -599,41 +627,183 @@ class InteractiveBoardOverlayView(
+ 
+     // ====== PUBLIC API ======
+ 
+-    fun enterBoardCorrectionMode() {
+-        isCorrectionMode = true
++    val isCorrectionModeActive: Boolean
++        get() = isCorrectionMode
+ 
+-        // 1. Backup user preferences
+-        backupPieceAlpha = pieceAlpha
+-        backupGridAlpha = gridAlpha
+-        backupHighlightAlpha = highlightAlpha
+-        backupArrowAlpha = arrowAlpha
+-        backupMoveGuideAlpha = moveGuideAlpha
++    fun setupCorrectionLayoutMetrics(customTop: Float? = null) {
++        val density = resources.displayMetrics.density
++        val pad = 6f * density
++        val rowH = 38f * density
++        val panelHeight = rowH * 3 + pad * 4
+ 
+-        // 2. Set custom correction mode values:
+-        pieceAlpha = 0.50f       // 50% agar bidak asli game di bawah terlihat
+-        gridAlpha = 0.0f        // 0% (Tembus pandang total)
+-        highlightAlpha = 0.0f   // 0%
+-        arrowAlpha = 0.0f       // 0%
+-        moveGuideAlpha = 0.0f   // 0%
++        val panelTop = if (customTop != null) {
++            customTop
++        } else {
++            val statusH = (boardBounds.width() * 0.12f).coerceIn(36f, 56f)
++            val headerH = headerHeightPx
++            val statusBarH = 24f * density
++            val headerTop = if (boardBounds.top - headerH - (8f * density) >= statusBarH) {
++                boardBounds.top - headerH - (8f * density)
++            } else {
++                boardBounds.bottom + (8f * density)
++            }
++            val statusTop = if (headerTop > boardBounds.bottom) headerTop + headerH + (4f * density) else boardBounds.bottom + (4f * density)
++            val defaultTop = statusTop + statusH + (4f * density)
++            val maxTop = if (height > 0) (height.toFloat() - panelHeight - 10f).coerceAtLeast(boardBounds.bottom + 4f * density) else defaultTop
++            defaultTop.coerceAtMost(maxTop)
++        }
+ 
+-        selectedEditorPiece = null
++        correctionPanelBounds.set(
++            boardBounds.left,
++            panelTop,
++            boardBounds.right,
++            panelTop + panelHeight
++        )
++        editorBounds.set(correctionPanelBounds)
++
++        val editorW = correctionPanelBounds.width()
++        val editorL = correctionPanelBounds.left
++
++        // 1. Palet Bidak (P, N, B, R, Q, K - Putih & Hitam)
++        palettePieceBounds.clear()
++        editorPaletteRects.clear()
++
++        // Row 1: White Pieces
++        val whitePieces = listOf('P', 'N', 'B', 'R', 'Q', 'K')
++        val itemW = (editorW - pad * 7) / 6f
++        for (i in whitePieces.indices) {
++            val p = whitePieces[i]
++            val l = editorL + pad + i * (itemW + pad)
++            val t = panelTop + pad
++            val rect = RectF(l, t, l + itemW, t + rowH)
++            palettePieceBounds[p] = rect
++            editorPaletteRects.add(Pair(rect, p))
++        }
++
++        // Row 2: Black Pieces
++        val blackPieces = listOf('p', 'n', 'b', 'r', 'q', 'k')
++        for (i in blackPieces.indices) {
++            val p = blackPieces[i]
++            val l = editorL + pad + i * (itemW + pad)
++            val t = panelTop + pad * 2 + rowH
++            val rect = RectF(l, t, l + itemW, t + rowH)
++            palettePieceBounds[p] = rect
++            editorPaletteRects.add(Pair(rect, p))
++        }
++
++        // Row 3: Action Buttons [ ğŸ—‘ï¸ Hapus ] [ âšª/âš« Giliran ] [ ğŸ”„ Kosongkan ] [ âœ… Selesai ]
++        val row3T = panelTop + pad * 3 + rowH * 2
++        val btnW = (editorW - pad * 5) / 4f
++
++        deleteToolButtonBounds.set(editorL + pad, row3T, editorL + pad + btnW, row3T + rowH)
++        palettePieceBounds['X'] = deleteToolButtonBounds
++        editorPaletteRects.add(Pair(deleteToolButtonBounds, 'X'))
++
++        turnToggleButtonBounds.set(editorL + pad * 2 + btnW, row3T, editorL + pad * 2 + btnW * 2, row3T + rowH)
++        clearBoardButtonBounds.set(editorL + pad * 3 + btnW * 2, row3T, editorL + pad * 3 + btnW * 3, row3T + rowH)
++        finishButtonBounds.set(editorL + pad * 4 + btnW * 3, row3T, editorL + editorW - pad, row3T + rowH)
++
++        editorActionBtnRects.clear()
++        editorActionBtnRects.add(Pair(turnToggleButtonBounds, "TURN"))
++        editorActionBtnRects.add(Pair(clearBoardButtonBounds, "CLEAR"))
++        editorActionBtnRects.add(Pair(finishButtonBounds, "DONE"))
++    }
++
++    fun clearAllPiecesForCorrection() {
++        board.fill('.')
++        selectedSquare = null
++        selectedPalettePiece = null
++    }
++
++    fun getSquareNameFromCoordinates(x: Float, y: Float): String {
++        val sqW = boardBounds.width() / 8f
++        val sqH = boardBounds.height() / 8f
++        val col = ((x - boardBounds.left) / sqW).toInt().coerceIn(0, 7)
++        val row = ((y - boardBounds.top) / sqH).toInt().coerceIn(0, 7)
++        val bRow = if (isBoardFlipped) 7 - row else row
++        val bCol = if (isBoardFlipped) 7 - col else col
++        val sqIdx = bRow * 8 + bCol
++        return idx2notation(sqIdx)
++    }
++
++    fun setPieceAtSquare(square: String, piece: Char) {
++        val sqIdx = notation2idx(square)
++        if (sqIdx in 0..63) {
++            board[sqIdx] = piece
++        }
++    }
++
++    fun removePieceAtSquare(square: String) {
++        val sqIdx = notation2idx(square)
++        if (sqIdx in 0..63) {
++            board[sqIdx] = '.'
++        }
++    }
++
++    fun notation2idx(sqName: String): Int {
++        if (sqName.length != 2) return -1
++        val file = sqName[0] - 'a'
++        val rank = 8 - (sqName[1] - '0')
++        if (file !in 0..7 || rank !in 0..7) return -1
++        return rank * 8 + file
++    }
++
++    fun generateFenFromCurrentBoard(): String {
++        return generateFen()
++    }
++
++    fun enterCorrectionMode() {
++        enterBoardCorrectionMode()
++    }
++
++    fun exitCorrectionMode() {
++        exitBoardCorrectionMode()
++    }
++
++    fun enterBoardCorrectionMode() {
++        isCorrectionMode = true
++        pieceAlpha = 0.50f       // 50% agar bidak asli game di bawah terlihat
++        val alpha50 = 128
++        pieceBitmapPaint.alpha = alpha50
++        whitePieceFillPaint.alpha = alpha50
++        whitePieceStrokePaint.alpha = alpha50
++        blackPieceFillPaint.alpha = alpha50
++        blackPieceStrokePaint.alpha = alpha50
++
++        selectedPalettePiece = null
+         selectedSquare = null
++        setupCorrectionLayoutMetrics()
++        requestLayout()
+         postInvalidate()
++        Log.d("BoardCorrection", "ğŸ› ï¸ Masuk mode koreksi papan: Alpha bidak diatur ke 50%.")
+     }
+ 
+     fun exitBoardCorrectionMode() {
+         isCorrectionMode = false
++        selectedPalettePiece = null
++        selectedSquare = null
++        loadAlphaPreferences() // Kembalikan transparansi bidak normal dari SharedPreferences
+ 
+-        // 3. Kembalikan 100% ke setelan pengguna sebelumnya
+-        pieceAlpha = backupPieceAlpha
+-        gridAlpha = backupGridAlpha
+-        highlightAlpha = backupHighlightAlpha
+-        arrowAlpha = backupArrowAlpha
+-        moveGuideAlpha = backupMoveGuideAlpha
++        // Buat FEN baru dari posisi papan hasil editan
++        val newFen = generateFenFromCurrentBoard()
++        try {
++            loadFen(newFen)
++            snapshotHistory.clear()
++            moveHistory.clear()
++            lastMoveFrom = null
++            lastMoveTo = null
++            engineBestMove = null
++            evalText = ""
++            isEngineCalculating = false
++        } catch (e: Exception) {
++            Log.w("BoardCorrection", "Error reloading FEN on exit correction", e)
++        }
+ 
+-        selectedEditorPiece = null
+-        selectedSquare = null
++        requestLayout()
+         postInvalidate()
++        Toast.makeText(context, "âœ… Posisi papan berhasil diperbarui!", Toast.LENGTH_SHORT).show()
++        checkAndTriggerStockfishTurn()
++        Log.d("BoardCorrection", "âœ… Keluar dari mode koreksi. FEN baru: $newFen")
+     }
+ 
+     fun toggleCorrectionMode() {
+@@ -745,20 +915,32 @@ class InteractiveBoardOverlayView(
+         Toast.makeText(context, "â†º Langkah berhasil di-undo!", Toast.LENGTH_SHORT).show()
+     }
+ 
+-    fun setOpponentColor(color: PlayerColor) {
++    fun switchSideAndResetGame(opponentIsWhite: Boolean) {
+         evalTimeoutJob?.cancel()
+         arrowDismissJob?.cancel()
+         autoHideJob?.cancel()
+-        val isGameInProgress = moveHistory.isNotEmpty()
+-        opponentColor = color
+-        stockfishColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+-        isBoardFlipped = (color == PlayerColor.WHITE)
+ 
+-        if (isGameInProgress) {
+-            Toast.makeText(context, "Pihak diubah, mereset papan...", Toast.LENGTH_SHORT).show()
++        if (opponentIsWhite) {
++            // Lawan Putih: User Putih (Atas), Engine Hitam (Bawah) -> Board Flipped
++            opponentColor = PlayerColor.WHITE
++            stockfishColor = PlayerColor.BLACK
++            isBoardFlipped = true
++        } else {
++            // Lawan Hitam: User Hitam (Atas), Engine Putih (Bawah) -> Board Normal
++            opponentColor = PlayerColor.BLACK
++            stockfishColor = PlayerColor.WHITE
++            isBoardFlipped = false
+         }
+ 
+-        // Total reset on side switch
++        try {
++            context.getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
++                .edit()
++                .putBoolean("is_board_flipped", isBoardFlipped)
++                .putString("engine_side", if (opponentIsWhite) "BLACK" else "WHITE")
++                .apply()
++        } catch (ignored: Exception) {}
++
++        // Total reset bersih ke FEN awal
+         isArrowVisible = false
+         castlingRights = "KQkq"
+         halfMoveClock = 0
+@@ -776,7 +958,14 @@ class InteractiveBoardOverlayView(
+         currentTurn = PlayerColor.WHITE
+         postInvalidate()
+ 
+-        checkAndTriggerStockfishTurn()
++        if (stockfishColor == PlayerColor.WHITE) {
++            checkAndTriggerStockfishTurn() // Mesin Putih langsung ambil langkah pertama otomatis
++        }
++        Log.d("ChessGame", "ğŸ”„ Ganti sisi terdeteksi: Papan otomatis di-reset bersih ke FEN awal.")
++    }
++
++    fun setOpponentColor(color: PlayerColor) {
++        switchSideAndResetGame(color == PlayerColor.WHITE)
+     }
+ 
+     fun flipBoard() {
+@@ -1183,37 +1372,25 @@ class InteractiveBoardOverlayView(
+     }
+ 
+     private fun drawEditorPalette(canvas: Canvas, editorTop: Float) {
+-        editorPaletteRects.clear()
+-        editorActionBtnRects.clear()
++        setupCorrectionLayoutMetrics(editorTop)
+ 
+         val density = resources.displayMetrics.density
+-        val editorW = boardRect.width()
+-        val editorL = boardRect.left
+-        val pad = 6f * density
+         val rowH = 38f * density
+-        val editorH = rowH * 3 + pad * 4
+-        val editorBounds = RectF(editorL, editorTop, editorL + editorW, editorTop + editorH)
+ 
+-        canvas.drawRoundRect(editorBounds, 8f * density, 8f * density, editorBgPaint)
+-        canvas.drawRoundRect(editorBounds, 8f * density, 8f * density, editorBorderPaint)
++        canvas.drawRoundRect(correctionPanelBounds, 8f * density, 8f * density, editorBgPaint)
++        canvas.drawRoundRect(correctionPanelBounds, 8f * density, 8f * density, editorBorderPaint)
+ 
+         // Row 1: White Pieces
+-        val whitePieces = listOf('K', 'Q', 'R', 'B', 'N', 'P')
+-        val itemW = (editorW - pad * 7) / 6f
+-        for (i in whitePieces.indices) {
+-            val p = whitePieces[i]
+-            val l = editorL + pad + i * (itemW + pad)
+-            val t = editorTop + pad
+-            val rect = RectF(l, t, l + itemW, t + rowH)
+-            editorPaletteRects.add(Pair(rect, p))
+-
+-            val isSel = (selectedEditorPiece == p)
++        val whitePieces = listOf('P', 'N', 'B', 'R', 'Q', 'K')
++        for (p in whitePieces) {
++            val rect = palettePieceBounds[p] ?: continue
++            val isSel = (selectedPalettePiece == p || selectedEditorPiece == p)
+             canvas.drawRoundRect(rect, 6f * density, 6f * density, if (isSel) editorSelectedBgPaint else editorItemBgPaint)
+             if (isSel) canvas.drawRoundRect(rect, 6f * density, 6f * density, editorSelectedStrokePaint)
+ 
+             val bitmap = pieceBitmapCache[p]
+             if (bitmap != null) {
+-                val left = rect.left + (itemW - bitmap.width) / 2f
++                val left = rect.left + (rect.width() - bitmap.width) / 2f
+                 val top = rect.top + (rowH - bitmap.height) / 2f
+                 canvas.drawBitmap(bitmap, left, top, palettePiecePaint)
+             } else {
+@@ -1230,21 +1407,16 @@ class InteractiveBoardOverlayView(
+         }
+ 
+         // Row 2: Black Pieces
+-        val blackPieces = listOf('k', 'q', 'r', 'b', 'n', 'p')
+-        for (i in blackPieces.indices) {
+-            val p = blackPieces[i]
+-            val l = editorL + pad + i * (itemW + pad)
+-            val t = editorTop + pad * 2 + rowH
+-            val rect = RectF(l, t, l + itemW, t + rowH)
+-            editorPaletteRects.add(Pair(rect, p))
+-
+-            val isSel = (selectedEditorPiece == p)
++        val blackPieces = listOf('p', 'n', 'b', 'r', 'q', 'k')
++        for (p in blackPieces) {
++            val rect = palettePieceBounds[p] ?: continue
++            val isSel = (selectedPalettePiece == p || selectedEditorPiece == p)
+             canvas.drawRoundRect(rect, 6f * density, 6f * density, if (isSel) editorSelectedBgPaint else editorItemBgPaint)
+             if (isSel) canvas.drawRoundRect(rect, 6f * density, 6f * density, editorSelectedStrokePaint)
+ 
+             val bitmap = pieceBitmapCache[p]
+             if (bitmap != null) {
+-                val left = rect.left + (itemW - bitmap.width) / 2f
++                val left = rect.left + (rect.width() - bitmap.width) / 2f
+                 val top = rect.top + (rowH - bitmap.height) / 2f
+                 canvas.drawBitmap(bitmap, left, top, palettePiecePaint)
+             } else {
+@@ -1261,39 +1433,28 @@ class InteractiveBoardOverlayView(
+         }
+ 
+         // Row 3: Action Buttons [ ğŸ—‘ï¸ Hapus ] [ âšª/âš« Giliran ] [ ğŸ”„ Kosongkan ] [ âœ… Selesai ]
+-        val row3T = editorTop + pad * 3 + rowH * 2
+-        val btnW = (editorW - pad * 5) / 4f
+-
+         // 1. Delete Tool (char 'X')
+-        val delRect = RectF(editorL + pad, row3T, editorL + pad + btnW, row3T + rowH)
+-        editorPaletteRects.add(Pair(delRect, 'X'))
+-        val isDelSel = (selectedEditorPiece == 'X')
+-        canvas.drawRoundRect(delRect, 6f * density, 6f * density, if (isDelSel) editorSelectedBgPaint else editorItemBgPaint)
++        val isDelSel = (selectedPalettePiece == 'X' || selectedEditorPiece == 'X')
++        canvas.drawRoundRect(deleteToolButtonBounds, 6f * density, 6f * density, if (isDelSel) editorSelectedBgPaint else editorItemBgPaint)
+         editorActionTxtPaint.color = if (isDelSel) Color.BLACK else Color.rgb(248, 113, 113)
+         editorActionTxtPaint.textSize = (rowH * 0.38f).coerceIn(10f, 13f)
+-        canvas.drawText("ğŸ—‘ï¸ Hapus", delRect.centerX(), delRect.centerY() + 5f, editorActionTxtPaint)
++        canvas.drawText("ğŸ—‘ï¸ Hapus", deleteToolButtonBounds.centerX(), deleteToolButtonBounds.centerY() + 5f, editorActionTxtPaint)
+ 
+         // 2. Turn Toggle Button
+-        val turnRect = RectF(editorL + pad * 2 + btnW, row3T, editorL + pad * 2 + btnW * 2, row3T + rowH)
+-        editorActionBtnRects.add(Pair(turnRect, "TURN"))
+-        canvas.drawRoundRect(turnRect, 6f * density, 6f * density, editorActionBtnBgPaint)
++        canvas.drawRoundRect(turnToggleButtonBounds, 6f * density, 6f * density, editorActionBtnBgPaint)
+         editorActionTxtPaint.color = Color.WHITE
+         val turnStr = if (currentTurn == PlayerColor.WHITE) "âšª Putih" else "âš« Hitam"
+-        canvas.drawText(turnStr, turnRect.centerX(), turnRect.centerY() + 5f, editorActionTxtPaint)
++        canvas.drawText(turnStr, turnToggleButtonBounds.centerX(), turnToggleButtonBounds.centerY() + 5f, editorActionTxtPaint)
+ 
+         // 3. Clear Board Button
+-        val clearRect = RectF(editorL + pad * 3 + btnW * 2, row3T, editorL + pad * 3 + btnW * 3, row3T + rowH)
+-        editorActionBtnRects.add(Pair(clearRect, "CLEAR"))
+-        canvas.drawRoundRect(clearRect, 6f * density, 6f * density, editorActionBtnBgPaint)
++        canvas.drawRoundRect(clearBoardButtonBounds, 6f * density, 6f * density, editorActionBtnBgPaint)
+         editorActionTxtPaint.color = Color.rgb(251, 191, 36)
+-        canvas.drawText("ğŸ”„ Reset", clearRect.centerX(), clearRect.centerY() + 5f, editorActionTxtPaint)
++        canvas.drawText("ğŸ”„ Reset", clearBoardButtonBounds.centerX(), clearBoardButtonBounds.centerY() + 5f, editorActionTxtPaint)
+ 
+         // 4. Finish / Done Button
+-        val doneRect = RectF(editorL + pad * 4 + btnW * 3, row3T, editorL + editorW - pad, row3T + rowH)
+-        editorActionBtnRects.add(Pair(doneRect, "DONE"))
+-        canvas.drawRoundRect(doneRect, 6f * density, 6f * density, editorActionDoneBgPaint)
++        canvas.drawRoundRect(finishButtonBounds, 6f * density, 6f * density, editorActionDoneBgPaint)
+         editorActionTxtPaint.color = Color.BLACK
+-        canvas.drawText("âœ… Selesai", doneRect.centerX(), doneRect.centerY() + 5f, editorActionTxtPaint)
++        canvas.drawText("âœ… Selesai", finishButtonBounds.centerX(), finishButtonBounds.centerY() + 5f, editorActionTxtPaint)
+     }
+ 
+     private fun drawMenuModal(canvas: Canvas) {
+@@ -1871,14 +2032,19 @@ class InteractiveBoardOverlayView(
+     // ====== TOUCH HANDLING ======
+ 
+     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+-        val touchX = event.x
+-        val touchY = event.y
++        val x = event.x
++        val y = event.y
++
++        // 1. PRIORITAS UTAMA: JIKA DALAM MODE KOREKSI PAPAN
++        if (isCorrectionModeActive) {
++            return handleCorrectionTouch(event)
++        }
+ 
+-        // 1. PRIORITAS UTAMA: JIKA DIALOG / MENU PENGATURAN SEDANG TERBUKA
++        // 2. Dialog Pengaturan & Menu Kontrol (Jika Aktif)
+         if (isMenuOpen) {
+             autoHideJob?.cancel() // Hentikan timer auto-hide saat menu dibuka
+ 
+-            if (modalCardRect.contains(touchX, touchY)) {
++            if (modalCardRect.contains(x, y)) {
+                 // Sentuhan di dalam kartu dialog pengaturan -> proses dan konsumsi penuh!
+                 return onTouchEvent(event)
+             }
+@@ -1893,8 +2059,8 @@ class InteractiveBoardOverlayView(
+             return true // Cegah tembus ke aksi hide papan saat menu terbuka
+         }
+ 
+-        // 2. Cek Tombol Sembunyi (Mata)
+-        if (btnEyeBounds.contains(touchX, touchY)) {
++        // 3. Tombol Header (Mata & Menu Titik Tiga)
++        if (btnEyeBounds.contains(x, y)) {
+             if (event.actionMasked == MotionEvent.ACTION_UP) {
+                 isMenuOpen = false
+                 currentMenuPage = MenuPage.MAIN
+@@ -1904,8 +2070,7 @@ class InteractiveBoardOverlayView(
+             return true
+         }
+ 
+-        // 3. Cek Tombol Menu Pengaturan (Titik Tiga)
+-        if (btnMenuBounds.contains(touchX, touchY)) {
++        if (btnMenuBounds.contains(x, y)) {
+             if (event.actionMasked == MotionEvent.ACTION_UP) {
+                 if (onOpenSettingsRequested != null) {
+                     onOpenSettingsRequested?.invoke()
+@@ -1921,24 +2086,19 @@ class InteractiveBoardOverlayView(
+             return true
+         }
+ 
+-        // 4. Cek Palette Koreksi
+-        if (isCorrectionMode && editorBounds.contains(touchX, touchY)) {
+-            return onTouchEvent(event)
+-        }
+-
+-        // 5. Cek Area Papan Catur -> Proses Interaksi Bidak & Papan
+-        if (boardRect.contains(touchX, touchY)) {
++        // 4. Area Papan Catur Normal
++        if (boardRect.contains(x, y)) {
+             return handleChessBoardTouch(event)
+         }
+ 
+-        // 6. Cek Header / Status Bounds (jika tidak ghost mode)
++        // Header / Status Bounds (jika tidak ghost mode)
+         if (!isGhostControlsEnabled) {
+-            if (headerBounds.contains(touchX, touchY) || statusBounds.contains(touchX, touchY)) {
++            if (headerBounds.contains(x, y) || statusBounds.contains(x, y)) {
+                 return onTouchEvent(event)
+             }
+         }
+ 
+-        // 7. Di luar seluruh area interaktif di atas -> WAJIB RETURN FALSE agar tembus 100% ke game!
++        // 5. Di Luar Semua Elemen -> Tembus ke Game di Bawahnya!
+         return false
+     }
+ 
+@@ -2169,9 +2329,8 @@ class InteractiveBoardOverlayView(
+                     }
+ 
+                     // 4. If in Correction Mode, handle editor interaction
+-                    if (isCorrectionMode) {
+-                        handleCorrectionTap(x, y)
+-                        return true
++                    if (isCorrectionModeActive) {
++                        return handleCorrectionTouch(event)
+                     }
+ 
+                     // 5. Board tap interaction when modal is closed & normal mode
+@@ -2202,87 +2361,85 @@ class InteractiveBoardOverlayView(
+         return super.onTouchEvent(event)
+     }
+ 
+-    private fun handleCorrectionTap(tapX: Float, tapY: Float) {
+-        // Tap on 8x8 Board
+-        if (boardRect.contains(tapX, tapY)) {
+-            val sqW = boardRect.width() / 8f
+-            val sqH = boardRect.height() / 8f
+-            val col = ((tapX - boardRect.left) / sqW).toInt().coerceIn(0, 7)
+-            val row = ((tapY - boardRect.top) / sqH).toInt().coerceIn(0, 7)
+-            val bRow = if (isBoardFlipped) 7 - row else row
+-            val bCol = if (isBoardFlipped) 7 - col else col
+-            val clicked = bRow * 8 + bCol
++    private fun handleCorrectionTouch(event: MotionEvent): Boolean {
++        val x = event.x
++        val y = event.y
+ 
+-            when {
+-                selectedEditorPiece == 'X' -> {
+-                    board[clicked] = '.'
+-                }
+-                selectedEditorPiece != null -> {
+-                    board[clicked] = selectedEditorPiece!!
+-                }
+-                else -> {
+-                    // Free Move / Swap piece on board
+-                    if (selectedSquare == null) {
+-                        if (board[clicked] != '.') {
+-                            selectedSquare = clicked
+-                        }
++        when (event.actionMasked) {
++            MotionEvent.ACTION_DOWN -> {
++                // 1. Cek Klik Tombol Selesai
++                if (finishButtonBounds.contains(x, y)) {
++                    if (!board.contains('K') || !board.contains('k')) {
++                        Toast.makeText(context, "âš ï¸ Kedua Raja (â™” & â™š) harus ada di papan!", Toast.LENGTH_SHORT).show()
+                     } else {
+-                        val from = selectedSquare!!
+-                        if (from == clicked) {
+-                            selectedSquare = null
+-                        } else {
+-                            board[clicked] = board[from]
+-                            board[from] = '.'
+-                            selectedSquare = null
+-                        }
++                        exitCorrectionMode()
+                     }
++                    return true
+                 }
+-            }
+-            postInvalidate()
+-            return
+-        }
+ 
+-        // Tap on Palette Items
+-        for ((rect, pChar) in editorPaletteRects) {
+-            if (rect.contains(tapX, tapY)) {
+-                selectedEditorPiece = if (selectedEditorPiece == pChar) null else pChar
+-                selectedSquare = null
+-                postInvalidate()
+-                return
+-            }
+-        }
++                // 2. Cek Klik Tombol Kosongkan Papan
++                if (clearBoardButtonBounds.contains(x, y)) {
++                    clearAllPiecesForCorrection()
++                    postInvalidate()
++                    return true
++                }
+ 
+-        // Tap on Action Buttons
+-        for ((rect, action) in editorActionBtnRects) {
+-            if (rect.contains(tapX, tapY)) {
+-                when (action) {
+-                    "TURN" -> {
+-                        currentTurn = if (currentTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+-                        postInvalidate()
+-                    }
+-                    "CLEAR" -> {
+-                        board.fill('.')
++                // Cek Klik Tombol Ganti Giliran
++                if (turnToggleButtonBounds.contains(x, y)) {
++                    currentTurn = if (currentTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
++                    postInvalidate()
++                    return true
++                }
++
++                // 3. Cek Pemilihan Bidak dari Palet
++                for ((piece, bounds) in palettePieceBounds) {
++                    if (bounds.contains(x, y)) {
++                        selectedPalettePiece = if (selectedPalettePiece == piece) null else piece
+                         selectedSquare = null
+-                        selectedEditorPiece = null
+                         postInvalidate()
++                        return true
+                     }
+-                    "DONE" -> {
+-                        if (!board.contains('K') || !board.contains('k')) {
+-                            Toast.makeText(context, "âš ï¸ Kedua Raja (â™” & â™š) harus ada di papan!", Toast.LENGTH_SHORT).show()
++                }
++
++                // 4. Cek Sentuhan di Petak Papan Catur (Taruh / Hapus Bidak)
++                if (boardBounds.contains(x, y)) {
++                    val square = getSquareNameFromCoordinates(x, y)
++                    val sqIdx = notation2idx(square)
++                    if (sqIdx in 0..63) {
++                        if (selectedPalettePiece != null) {
++                            if (selectedPalettePiece == 'X') {
++                                removePieceAtSquare(square)
++                            } else {
++                                setPieceAtSquare(square, selectedPalettePiece!!)
++                            }
+                         } else {
+-                            isCorrectionMode = false
+-                            selectedSquare = null
+-                            selectedEditorPiece = null
+-                            requestLayout()
+-                            postInvalidate()
+-                            Toast.makeText(context, "âœ… Posisi papan berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+-                            checkAndTriggerStockfishTurn()
++                            if (selectedSquare == null) {
++                                if (board[sqIdx] != '.') {
++                                    selectedSquare = sqIdx
++                                }
++                            } else {
++                                val from = selectedSquare!!
++                                if (from == sqIdx) {
++                                    removePieceAtSquare(square)
++                                    selectedSquare = null
++                                } else {
++                                    board[sqIdx] = board[from]
++                                    board[from] = '.'
++                                    selectedSquare = null
++                                }
++                            }
+                         }
+                     }
++                    postInvalidate()
++                    return true
+                 }
+-                return
++                return true
++            }
++            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP -> {
++                return true
+             }
+         }
++        return true
+     }
+ 
+     private fun handleModalTap(tapX: Float, tapY: Float) {
+diff --git a/app/src/main/java/com/chessbeater/overlay/MiniBoardOverlayService.kt b/app/src/main/java/com/chessbeater/overlay/MiniBoardOverlayService.kt
+index 53dbfe1..2d201bf 100644
+--- a/app/src/main/java/com/chessbeater/overlay/MiniBoardOverlayService.kt
++++ b/app/src/main/java/com/chessbeater/overlay/MiniBoardOverlayService.kt
+@@ -449,63 +449,79 @@ class MiniBoardOverlayService : Service() {
+         }
+ 
+         // Initial Startup State: Papan sembunyi secara default, Floating Eye siap di tepi layar
+-        isBoardShowing = false
+-        currentHideReason = OverlayHideReason.MANUAL
+-        showFloatingEyeFromSaved()
+-        Log.i(TAG, "MiniBoardOverlayService started in HIDDEN mode â€” Floating Eye ready at ($eyePosX, $eyePosY)")
+-
+-        // Tampilkan Quick Alignment Grid HUD neon transparan untuk verifikasi posisi instan
+-        val initialBoundsF = RectF(
+-            savedBoardX.toFloat(),
+-            savedBoardY.toFloat(),
+-            (savedBoardX + savedBoardSizePx).toFloat(),
+-            (savedBoardY + savedBoardSizePx).toFloat()
+-        )
+-        overlayManager?.showQuickAlignmentOverlay(initialBoundsF) { newBounds ->
+-            savedBoardX = newBounds.left.toInt()
+-            savedBoardY = newBounds.top.toInt()
+-            savedBoardSizePx = newBounds.width().toInt().coerceIn(280, 1400)
+-            debounceSaveBoardPosition()
++        val isQuickAlignEnabled = getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
++            .getSafeBoolean("quick_alignment_enabled", true)
+ 
+-            try {
+-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+-                    .edit()
+-                    .putFloat("board_left", newBounds.left)
+-                    .putFloat("board_top", newBounds.top)
+-                    .putFloat("board_right", newBounds.right)
+-                    .putFloat("board_bottom", newBounds.bottom)
+-                    .apply()
+-            } catch (ignored: Exception) {}
+-
+-            overlayManager?.snapInteractiveBoard(
+-                Rect(savedBoardX, savedBoardY, savedBoardX + savedBoardSizePx, savedBoardY + savedBoardSizePx)
+-            )
+-            Toast.makeText(this@MiniBoardOverlayService, "ğŸ”’ Posisi papan berhasil diselaraskan!", Toast.LENGTH_SHORT).show()
+-
+-            // Munculkan QuickSideSelector dialog di tengah area papan
+-            overlayManager?.showQuickSideSelector(
+-                boardBounds = newBounds,
+-                onSideSelected = { isOpponentWhite ->
+-                    try {
+-                        getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+-                            .edit()
+-                            .putBoolean("is_board_flipped", isOpponentWhite)
+-                            .putString("engine_side", if (isOpponentWhite) "BLACK" else "WHITE")
+-                            .apply()
+-                    } catch (ignored: Exception) {}
+-
+-                    val interactiveView = overlayManager?.getInteractiveBoardView()
+-                    interactiveView?.reloadBoardOrientation()
+-                    val modeText = if (isOpponentWhite) "Lawan Putih (Mesin Hitam Bawah)" else "Lawan Hitam (Mesin Putih Bawah)"
+-                    Toast.makeText(this@MiniBoardOverlayService, "âš”ï¸ Mode diatur: $modeText", Toast.LENGTH_SHORT).show()
+-                },
+-                onDismiss = {}
++        if (isQuickAlignEnabled) {
++            isBoardShowing = false
++            currentHideReason = OverlayHideReason.MANUAL
++            showFloatingEyeFromSaved()
++            Log.i(TAG, "MiniBoardOverlayService started â€” Floating Eye ready at ($eyePosX, $eyePosY) with Quick Alignment HUD")
++
++            // Tampilkan Quick Alignment Grid HUD neon transparan untuk verifikasi posisi instan
++            val initialBoundsF = RectF(
++                savedBoardX.toFloat(),
++                savedBoardY.toFloat(),
++                (savedBoardX + savedBoardSizePx).toFloat(),
++                (savedBoardY + savedBoardSizePx).toFloat()
+             )
++            overlayManager?.showQuickAlignmentOverlay(initialBoundsF) { newBounds ->
++                savedBoardX = newBounds.left.toInt()
++                savedBoardY = newBounds.top.toInt()
++                savedBoardSizePx = newBounds.width().toInt().coerceIn(280, 1400)
++                debounceSaveBoardPosition()
++
++                try {
++                    getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
++                        .edit()
++                        .putFloat("board_left", newBounds.left)
++                        .putFloat("board_top", newBounds.top)
++                        .putFloat("board_right", newBounds.right)
++                        .putFloat("board_bottom", newBounds.bottom)
++                        .apply()
++                } catch (ignored: Exception) {}
++
++                overlayManager?.snapInteractiveBoard(
++                    Rect(savedBoardX, savedBoardY, savedBoardX + savedBoardSizePx, savedBoardY + savedBoardSizePx)
++                )
++                Toast.makeText(this@MiniBoardOverlayService, "ğŸ”’ Posisi papan berhasil diselaraskan!", Toast.LENGTH_SHORT).show()
++
++                // Munculkan QuickSideSelector dialog di tengah area papan
++                overlayManager?.showQuickSideSelector(
++                    boardBounds = newBounds,
++                    onSideSelected = { isOpponentWhite ->
++                        switchSideAndResetGame(isOpponentWhite)
++                    },
++                    onDismiss = {}
++                )
++            }
++        } else {
++            // Lewati kalibrasi cepat, langsung siapkan floating eye
++            isBoardShowing = false
++            currentHideReason = OverlayHideReason.MANUAL
++            overlayManager?.hideInteractiveBoard(detachOnly = true)
++            showFloatingEyeFromSaved()
++            Log.d("ServiceStartup", "âš¡ Kalibrasi cepat dinonaktifkan: Langsung siap dalam mode tersembunyi.")
+         }
+ 
+         startAutoDetectionLoop()
+     }
+ 
++    fun switchSideAndResetGame(opponentIsWhite: Boolean) {
++        try {
++            getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
++                .edit()
++                .putBoolean("is_board_flipped", opponentIsWhite)
++                .putString("engine_side", if (opponentIsWhite) "BLACK" else "WHITE")
++                .apply()
++        } catch (ignored: Exception) {}
++
++        val interactiveView = overlayManager?.getInteractiveBoardView()
++        interactiveView?.switchSideAndResetGame(opponentIsWhite)
++        val modeText = if (opponentIsWhite) "Lawan Putih (Mesin Hitam Bawah)" else "Lawan Hitam (Mesin Putih Bawah)"
++        Toast.makeText(this@MiniBoardOverlayService, "âš”ï¸ Mode diatur: $modeText", Toast.LENGTH_SHORT).show()
++    }
++
+     fun applyPreset(preset: CalibrationPreset) {
+         savedBoardX = preset.x.toInt()
+         savedBoardY = preset.y.toInt()
+@@ -571,24 +587,10 @@ class MiniBoardOverlayService : Service() {
+         overlayManager?.showMainControlMenu(
+             boardBounds = boardRect,
+             onSelectOpponentWhite = {
+-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+-                    .edit()
+-                    .putBoolean("is_board_flipped", true)
+-                    .putString("engine_side", "BLACK")
+-                    .apply()
+-                val interactiveView = overlayManager?.getInteractiveBoardView()
+-                interactiveView?.reloadBoardOrientation()
+-                Toast.makeText(this@MiniBoardOverlayService, "âš”ï¸ Mode: Lawan Putih (Mesin Hitam Bawah)", Toast.LENGTH_SHORT).show()
++                switchSideAndResetGame(true)
+             },
+             onSelectOpponentBlack = {
+-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+-                    .edit()
+-                    .putBoolean("is_board_flipped", false)
+-                    .putString("engine_side", "WHITE")
+-                    .apply()
+-                val interactiveView = overlayManager?.getInteractiveBoardView()
+-                interactiveView?.reloadBoardOrientation()
+-                Toast.makeText(this@MiniBoardOverlayService, "âš”ï¸ Mode: Lawan Hitam (Mesin Putih Bawah)", Toast.LENGTH_SHORT).show()
++                switchSideAndResetGame(false)
+             },
+             onToggleAutoDetect = {
+                 val current = currentVisualPrefs.isAutoDetectionEnabled
+diff --git a/app/src/main/java/com/chessbeater/overlay/OverlayManager.kt b/app/src/main/java/com/chessbeater/overlay/OverlayManager.kt
+index e87148b..a4ecbfd 100644
+--- a/app/src/main/java/com/chessbeater/overlay/OverlayManager.kt
++++ b/app/src/main/java/com/chessbeater/overlay/OverlayManager.kt
+@@ -1065,12 +1065,15 @@ class OverlayManager(private val context: Context) {
+                 context = context,
+                 onBackToMainMenu = {
+                     hideSettingsOverlay()
+-                    interactiveBoardView?.reloadVisualSettings()
++                    interactiveBoardView?.reloadVisualSettingsOnly()
+                     onBackToMainMenu?.invoke()
+                 },
++                onVisualSettingsChanged = {
++                    interactiveBoardView?.reloadVisualSettingsOnly()
++                },
+                 onClose = {
+                     hideSettingsOverlay()
+-                    interactiveBoardView?.reloadVisualSettings()
++                    interactiveBoardView?.reloadVisualSettingsOnly()
+                     onClose()
+                 }
+             )
+diff --git a/app/src/main/java/com/chessbeater/ui/DashboardScreen.kt b/app/src/main/java/com/chessbeater/ui/DashboardScreen.kt
+index a90b959..45b8173 100644
+--- a/app/src/main/java/com/chessbeater/ui/DashboardScreen.kt
++++ b/app/src/main/java/com/chessbeater/ui/DashboardScreen.kt
+@@ -50,6 +50,7 @@ fun DashboardScreen(
+     onToggleMiniBoard: (Boolean) -> Unit = {},
+     onToggleGhostMode: (Boolean) -> Unit = {},
+     onToggleTouchForwarding: (Boolean) -> Unit = {},
++    onToggleQuickAlignment: (Boolean) -> Unit = {},
+     onToggleSaveSessionLogs: (Boolean) -> Unit = {},
+     onDeleteLog: (java.io.File) -> Unit = {},
+     onClearAllLogs: () -> Unit = {},
+@@ -440,6 +441,13 @@ fun DashboardScreen(
+                         onCheckedChange = onToggleTouchForwarding
+                     )
+                     Divider(color = Color(0xFF232D3F), thickness = 1.dp)
++                    ToggleRow(
++                        title = "âš¡ Kalibrasi Cepat Saat Startup",
++                        subtitle = "Tampilkan grid alignment HUD otomatis saat service aktif",
++                        isChecked = uiState.isQuickAlignmentEnabled,
++                        onCheckedChange = onToggleQuickAlignment
++                    )
++                    Divider(color = Color(0xFF232D3F), thickness = 1.dp)
+                     ToggleRow(
+                         title = "âºï¸ Rekam Log Sesi Pertandingan (Session Logs)",
+                         subtitle = "Simpan pergerakan, notasi FEN, dan evaluasi bestmove ke file log internal",
+diff --git a/app/src/main/java/com/chessbeater/ui/DashboardViewModel.kt b/app/src/main/java/com/chessbeater/ui/DashboardViewModel.kt
+index c6951e7..9463142 100644
+--- a/app/src/main/java/com/chessbeater/ui/DashboardViewModel.kt
++++ b/app/src/main/java/com/chessbeater/ui/DashboardViewModel.kt
+@@ -26,6 +26,7 @@ data class DashboardUiState(
+     val showFloatingHud: Boolean = true,
+     val isStealthToastMode: Boolean = false,
+     val isHapticAlertEnabled: Boolean = true,
++    val isQuickAlignmentEnabled: Boolean = true,
+     val isSaveSessionLogsEnabled: Boolean = false,
+     val savedLogsList: List<com.chessbeater.logging.SessionLogInfo> = emptyList(),
+     // Dual service status
+@@ -68,7 +69,9 @@ class DashboardViewModel(
+     init {
+         val loggingEnabled = com.chessbeater.logging.SessionLogger.isLoggingEnabled(app)
+         val logs = com.chessbeater.logging.SessionLogger.getAllLogs(app)
+-        _uiState.update { it.copy(isSaveSessionLogsEnabled = loggingEnabled, savedLogsList = logs) }
++        val quickAlignEnabled = app.getSharedPreferences("chessbeater_visual_prefs", android.content.Context.MODE_PRIVATE)
++            .getBoolean("quick_alignment_enabled", true)
++        _uiState.update { it.copy(isSaveSessionLogsEnabled = loggingEnabled, savedLogsList = logs, isQuickAlignmentEnabled = quickAlignEnabled) }
+ 
+         viewModelScope.launch {
+             preferencesRepository.userPreferencesFlow.collect { prefs ->
+@@ -114,6 +117,14 @@ class DashboardViewModel(
+     fun toggleStealthToastMode(stealth: Boolean) = viewModelScope.launch { preferencesRepository.updateStealthToast(stealth) }
+     fun toggleHapticAlert(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateHapticAlert(enabled) }
+ 
++    fun toggleQuickAlignment(enabled: Boolean) {
++        app.getSharedPreferences("chessbeater_visual_prefs", android.content.Context.MODE_PRIVATE)
++            .edit()
++            .putBoolean("quick_alignment_enabled", enabled)
++            .apply()
++        _uiState.update { it.copy(isQuickAlignmentEnabled = enabled) }
++    }
++
+     fun toggleSaveSessionLogs(enabled: Boolean) {
+         com.chessbeater.logging.SessionLogger.setLoggingEnabled(app, enabled)
+         refreshSavedLogs()
+diff --git a/app/src/main/java/com/chessbeater/ui/SettingsActivity.kt b/app/src/main/java/com/chessbeater/ui/SettingsActivity.kt
+index 6b7be3f..775ffd6 100644
+--- a/app/src/main/java/com/chessbeater/ui/SettingsActivity.kt
++++ b/app/src/main/java/com/chessbeater/ui/SettingsActivity.kt
+@@ -86,12 +86,12 @@ fun SettingsScreen(onBack: () -> Unit) {
+     var headerEyeSizeDp by remember { mutableStateOf(sharedPrefs.getSafeInt("size_header_eye_dp", 34).coerceIn(24, 52)) }
+     var headerMenuSizeDp by remember { mutableStateOf(sharedPrefs.getSafeInt("size_header_menu_dp", 34).coerceIn(24, 52)) }
+ 
+-    var pieceAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("piece_alpha", sharedPrefs.getSafeFloat("pieces_alpha", 1.0f)).coerceIn(0.05f, 1.0f)) }
+-    var gridAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("grid_alpha", sharedPrefs.getSafeFloat("board_alpha", 0.85f)).coerceIn(0.0f, 1.0f)) }
+-    var arrowAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("arrow_alpha", 0.90f).coerceIn(0.05f, 1.0f)) }
+-    var highlightAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("highlight_alpha", 0.50f).coerceIn(0.05f, 1.0f)) }
+-    var moveGuideAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("move_guide_alpha", sharedPrefs.getSafeFloat("guide_dots_alpha", 0.80f)).coerceIn(0.05f, 1.0f)) }
+-    var floatingEyeAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("floating_eye_alpha", 0.85f).coerceIn(0.05f, 1.0f)) }
++    var pieceAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_pieces", sharedPrefs.getSafeFloat("piece_alpha", sharedPrefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1.0f)) }
++    var gridAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("board_alpha", sharedPrefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0.0f, 1.0f)) }
++    var arrowAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_arrows", sharedPrefs.getSafeFloat("arrow_alpha", 0.90f)).coerceIn(0.05f, 1.0f)) }
++    var highlightAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_highlights", sharedPrefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1.0f)) }
++    var moveGuideAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_dots", sharedPrefs.getSafeFloat("move_guide_alpha", sharedPrefs.getSafeFloat("guide_dots_alpha", 0.80f))).coerceIn(0.05f, 1.0f)) }
++    var floatingEyeAlpha by remember { mutableStateOf(sharedPrefs.getSafeFloat("alpha_floating_eye", sharedPrefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1.0f)) }
+ 
+     var isBoardLocked by remember { mutableStateOf(sharedPrefs.getBoolean("board_is_locked", true)) }
+     var isGhostControlsEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("ghost_controls_enabled", false)) }
+@@ -117,12 +117,19 @@ fun SettingsScreen(onBack: () -> Unit) {
+             .putInt("size_floating_eye_dp", floatingEyeSizeDp)
+             .putInt("size_header_eye_dp", headerEyeSizeDp)
+             .putInt("size_header_menu_dp", headerMenuSizeDp)
++            .putFloat("alpha_pieces", pieceAlpha)
+             .putFloat("piece_alpha", pieceAlpha)
+-            .putFloat("grid_alpha", gridAlpha)
++            .putFloat("pieces_alpha", pieceAlpha)
+             .putFloat("board_alpha", gridAlpha)
++            .putFloat("grid_alpha", gridAlpha)
++            .putFloat("alpha_arrows", arrowAlpha)
+             .putFloat("arrow_alpha", arrowAlpha)
++            .putFloat("alpha_highlights", highlightAlpha)
+             .putFloat("highlight_alpha", highlightAlpha)
++            .putFloat("alpha_dots", moveGuideAlpha)
+             .putFloat("move_guide_alpha", moveGuideAlpha)
++            .putFloat("guide_dots_alpha", moveGuideAlpha)
++            .putFloat("alpha_floating_eye", floatingEyeAlpha)
+             .putFloat("floating_eye_alpha", floatingEyeAlpha)
+             .putBoolean("board_is_locked", isBoardLocked)
+             .putBoolean("ghost_controls_enabled", isGhostControlsEnabled)
+diff --git a/app/src/main/java/com/chessbeater/ui/SettingsOverlayView.kt b/app/src/main/java/com/chessbeater/ui/SettingsOverlayView.kt
+index 2bc0775..59deedc 100644
+--- a/app/src/main/java/com/chessbeater/ui/SettingsOverlayView.kt
++++ b/app/src/main/java/com/chessbeater/ui/SettingsOverlayView.kt
+@@ -15,6 +15,7 @@ import kotlin.math.roundToInt
+ class SettingsOverlayView(
+     context: Context,
+     private val onBackToMainMenu: (() -> Unit)? = null,
++    private val onVisualSettingsChanged: (() -> Unit)? = null,
+     private val onClose: () -> Unit
+ ) : FrameLayout(context) {
+ 
+@@ -295,38 +296,77 @@ class SettingsOverlayView(
+         // --- SECTION: TRANSPARANSI & VISUAL ---
+         addSectionHeader("ğŸ¨ Transparansi Visual")
+ 
+-        val boardAlpha = prefs.getSafeFloat("grid_alpha", prefs.getSafeFloat("board_alpha", 0.85f)).coerceIn(0f, 1f)
++        // 1. Bidak Catur (alpha_pieces)
++        val piecesAlpha = prefs.getSafeFloat("alpha_pieces", prefs.getSafeFloat("piece_alpha", prefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1f)
++        addSliderItem("Bidak Catur", "${(piecesAlpha * 100).toInt()}%", (piecesAlpha * 100).toInt(), 100) { p ->
++            val a = (p / 100f).coerceIn(0.05f, 1f)
++            prefs.edit()
++                .putFloat("alpha_pieces", a)
++                .putFloat("piece_alpha", a)
++                .putFloat("pieces_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
++            "${p}%"
++        }
++
++        // 2. Transparansi Papan / Grid (board_alpha)
++        val boardAlpha = prefs.getSafeFloat("board_alpha", prefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0f, 1f)
+         addSliderItem("Transparansi Papan / Grid", "${(boardAlpha * 100).toInt()}%", (boardAlpha * 100).toInt(), 100) { p ->
+             val a = (p / 100f).coerceIn(0f, 1f)
+-            prefs.edit().putFloat("grid_alpha", a).putFloat("board_alpha", a).apply()
++            prefs.edit()
++                .putFloat("board_alpha", a)
++                .putFloat("grid_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
+             "${p}%"
+         }
+ 
+-        val dotsAlpha = prefs.getSafeFloat("guide_dots_alpha", 0.80f).coerceIn(0.05f, 1f)
+-        addSliderItem("Move Guide Dots", "${(dotsAlpha * 100).toInt()}%", (dotsAlpha * 100).toInt(), 100) { p ->
++        // 3. Panah Langkah (alpha_arrows)
++        val arrowAlpha = prefs.getSafeFloat("alpha_arrows", prefs.getSafeFloat("arrow_alpha", 0.95f)).coerceIn(0.05f, 1f)
++        addSliderItem("Panah Langkah", "${(arrowAlpha * 100).toInt()}%", (arrowAlpha * 100).toInt(), 100) { p ->
+             val a = (p / 100f).coerceIn(0.05f, 1f)
+-            prefs.edit().putFloat("guide_dots_alpha", a).apply()
++            prefs.edit()
++                .putFloat("alpha_arrows", a)
++                .putFloat("arrow_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
+             "${p}%"
+         }
+ 
+-        val piecesAlpha = prefs.getSafeFloat("pieces_alpha", prefs.getSafeFloat("piece_alpha", 0.85f)).coerceIn(0.05f, 1f)
+-        addSliderItem("Bidak Catur", "${(piecesAlpha * 100).toInt()}%", (piecesAlpha * 100).toInt(), 100) { p ->
++        // 4. Highlight Petak (alpha_highlights)
++        val hlAlpha = prefs.getSafeFloat("alpha_highlights", prefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1f)
++        addSliderItem("Highlight Petak", "${(hlAlpha * 100).toInt()}%", (hlAlpha * 100).toInt(), 100) { p ->
+             val a = (p / 100f).coerceIn(0.05f, 1f)
+-            prefs.edit().putFloat("pieces_alpha", a).putFloat("piece_alpha", a).apply()
++            prefs.edit()
++                .putFloat("alpha_highlights", a)
++                .putFloat("highlight_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
+             "${p}%"
+         }
+ 
+-        val arrowAlpha = prefs.getSafeFloat("arrow_alpha", 0.95f).coerceIn(0.05f, 1f)
+-        addSliderItem("Panah Langkah", "${(arrowAlpha * 100).toInt()}%", (arrowAlpha * 100).toInt(), 100) { p ->
++        // 5. Move Guide Dots (alpha_dots)
++        val dotsAlpha = prefs.getSafeFloat("alpha_dots", prefs.getSafeFloat("guide_dots_alpha", prefs.getSafeFloat("move_guide_alpha", 0.80f))).coerceIn(0.05f, 1f)
++        addSliderItem("Move Guide Dots", "${(dotsAlpha * 100).toInt()}%", (dotsAlpha * 100).toInt(), 100) { p ->
+             val a = (p / 100f).coerceIn(0.05f, 1f)
+-            prefs.edit().putFloat("arrow_alpha", a).apply()
++            prefs.edit()
++                .putFloat("alpha_dots", a)
++                .putFloat("guide_dots_alpha", a)
++                .putFloat("move_guide_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
+             "${p}%"
+         }
+ 
+-        val hlAlpha = prefs.getSafeFloat("highlight_alpha", 0.50f).coerceIn(0.05f, 1f)
+-        addSliderItem("Highlight Petak", "${(hlAlpha * 100).toInt()}%", (hlAlpha * 100).toInt(), 100) { p ->
++        // 6. Floating Eye (alpha_floating_eye)
++        val eyeAlpha = prefs.getSafeFloat("alpha_floating_eye", prefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1f)
++        addSliderItem("Tombol Floating Eye", "${(eyeAlpha * 100).toInt()}%", (eyeAlpha * 100).toInt(), 100) { p ->
+             val a = (p / 100f).coerceIn(0.05f, 1f)
+-            prefs.edit().putFloat("highlight_alpha", a).apply()
++            prefs.edit()
++                .putFloat("alpha_floating_eye", a)
++                .putFloat("floating_eye_alpha", a)
++                .apply()
++            onVisualSettingsChanged?.invoke()
+             "${p}%"
+         }
+     }

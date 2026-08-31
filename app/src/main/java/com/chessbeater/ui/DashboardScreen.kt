@@ -50,6 +50,7 @@ fun DashboardScreen(
     onToggleMiniBoard: (Boolean) -> Unit = {},
     onToggleGhostMode: (Boolean) -> Unit = {},
     onToggleTouchForwarding: (Boolean) -> Unit = {},
+    onToggleQuickAlignment: (Boolean) -> Unit = {},
     onToggleSaveSessionLogs: (Boolean) -> Unit = {},
     onDeleteLog: (java.io.File) -> Unit = {},
     onClearAllLogs: () -> Unit = {},
@@ -438,6 +439,13 @@ fun DashboardScreen(
                         subtitle = "Sentuhan di papan mini otomatis diteruskan ke game catur di bawahnya",
                         isChecked = uiState.isTouchForwardingEnabled,
                         onCheckedChange = onToggleTouchForwarding
+                    )
+                    Divider(color = Color(0xFF232D3F), thickness = 1.dp)
+                    ToggleRow(
+                        title = "⚡ Kalibrasi Cepat Saat Startup",
+                        subtitle = "Tampilkan grid alignment HUD otomatis saat service aktif",
+                        isChecked = uiState.isQuickAlignmentEnabled,
+                        onCheckedChange = onToggleQuickAlignment
                     )
                     Divider(color = Color(0xFF232D3F), thickness = 1.dp)
                     ToggleRow(

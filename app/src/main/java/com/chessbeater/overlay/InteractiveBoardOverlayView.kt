@@ -218,6 +218,20 @@ class InteractiveBoardOverlayView(
     // 2-Column Settings Interactive Buttons & Toggles
     private val statusBounds = RectF()
     private val editorBounds = RectF()
+
+    val boardBounds: RectF
+        get() = boardRect
+
+    val finishButtonBounds = RectF()
+    val clearBoardButtonBounds = RectF()
+    val turnToggleButtonBounds = RectF()
+    val deleteToolButtonBounds = RectF()
+    val correctionPanelBounds = RectF()
+    val palettePieceBounds = mutableMapOf<Char, RectF>()
+    var selectedPalettePiece: Char?
+        get() = selectedEditorPiece
+        set(value) { selectedEditorPiece = value }
+
     private val lockBoardToggleRect = RectF()
     private val ghostControlsToggleRect = RectF()
     private val humanizeToggleRect = RectF()
@@ -478,14 +492,18 @@ class InteractiveBoardOverlayView(
     }
 
     fun reloadVisualSettings() {
-        updateVisualPaintsOnly()
+        loadAlphaPreferences()
     }
 
     fun reloadVisualSettingsOnly() {
-        updateVisualPaintsOnly()
+        loadAlphaPreferences()
     }
 
     fun updateVisualPaintsOnly() {
+        loadAlphaPreferences()
+    }
+
+    fun loadAlphaPreferences() {
         try {
             val prefs = context.getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
             val savedAlpha = prefs.getSafeFloat("overlay_alpha", 0.95f)
@@ -494,13 +512,13 @@ class InteractiveBoardOverlayView(
             isHighlightFilled = prefs.getSafeBoolean("highlight_is_filled", true)
             fromSquareColor = prefs.getSafeInt("color_highlight_from", Color.parseColor("#00E5FF"))
             toSquareColor = prefs.getSafeInt("color_highlight_to", Color.parseColor("#10B981"))
-            pieceAlpha = prefs.getSafeFloat("pieces_alpha", prefs.getSafeFloat("piece_alpha", 1.0f))
-            val boardAlpha = prefs.getSafeFloat("grid_alpha", prefs.getSafeFloat("board_alpha", 0.85f))
+            pieceAlpha = prefs.getSafeFloat("alpha_pieces", prefs.getSafeFloat("piece_alpha", prefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1.0f)
+            val boardAlpha = prefs.getSafeFloat("board_alpha", prefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0.0f, 1.0f)
             gridAlpha = boardAlpha
-            arrowAlpha = prefs.getSafeFloat("arrow_alpha", 0.95f)
-            highlightAlpha = prefs.getSafeFloat("highlight_alpha", 0.50f)
-            floatingEyeAlpha = prefs.getSafeFloat("floating_eye_alpha", 0.85f)
-            moveGuideAlpha = prefs.getSafeFloat("guide_dots_alpha", prefs.getSafeFloat("move_guide_alpha", 0.80f))
+            arrowAlpha = prefs.getSafeFloat("alpha_arrows", prefs.getSafeFloat("arrow_alpha", 0.95f)).coerceIn(0.05f, 1.0f)
+            highlightAlpha = prefs.getSafeFloat("alpha_highlights", prefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1.0f)
+            floatingEyeAlpha = prefs.getSafeFloat("alpha_floating_eye", prefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1.0f)
+            moveGuideAlpha = prefs.getSafeFloat("alpha_dots", prefs.getSafeFloat("move_guide_alpha", prefs.getSafeFloat("guide_dots_alpha", 0.80f))).coerceIn(0.05f, 1.0f)
             maxEloRating = prefs.getSafeInt("max_elo_rating", 3500)
             sizeHeaderEyeDp = prefs.getSafeInt("size_header_eye_dp", 34)
             sizeHeaderMenuDp = prefs.getSafeInt("size_header_menu_dp", 34)
@@ -517,12 +535,22 @@ class InteractiveBoardOverlayView(
             lightSqGhostPaint.alpha = gAlphaInt
             darkSqGhostPaint.alpha = gAlphaInt
 
+            val pAlphaInt = (pieceAlpha * 255).roundToInt().coerceIn(0, 255)
+            pieceBitmapPaint.alpha = pAlphaInt
+            whitePieceFillPaint.alpha = pAlphaInt
+            whitePieceStrokePaint.alpha = pAlphaInt
+            blackPieceFillPaint.alpha = pAlphaInt
+            blackPieceStrokePaint.alpha = pAlphaInt
+
+            val aAlphaInt = (arrowAlpha * 255).roundToInt().coerceIn(0, 255)
+            arrowFillPaint.alpha = aAlphaInt
+            arrowStrokePaint.alpha = aAlphaInt
+
             reloadBoardBounds()
-            reloadBoardOrientation()
             postInvalidate()
-            Log.d("InteractiveBoard", "✅ Visual paints only berhasil dimuat ulang (game state dipertahankan)!")
+            Log.d("InteractiveBoard", "✅ Visual paints only & alpha preferences berhasil dimuat ulang!")
         } catch (e: Exception) {
-            Log.w("InteractiveBoard", "Gagal updateVisualPaintsOnly", e)
+            Log.w("InteractiveBoard", "Gagal loadAlphaPreferences", e)
         }
     }
 
@@ -599,41 +627,183 @@ class InteractiveBoardOverlayView(
 
     // ====== PUBLIC API ======
 
+    val isCorrectionModeActive: Boolean
+        get() = isCorrectionMode
+
+    fun setupCorrectionLayoutMetrics(customTop: Float? = null) {
+        val density = resources.displayMetrics.density
+        val pad = 6f * density
+        val rowH = 38f * density
+        val panelHeight = rowH * 3 + pad * 4
+
+        val panelTop = if (customTop != null) {
+            customTop
+        } else {
+            val statusH = (boardBounds.width() * 0.12f).coerceIn(36f, 56f)
+            val headerH = headerHeightPx
+            val statusBarH = 24f * density
+            val headerTop = if (boardBounds.top - headerH - (8f * density) >= statusBarH) {
+                boardBounds.top - headerH - (8f * density)
+            } else {
+                boardBounds.bottom + (8f * density)
+            }
+            val statusTop = if (headerTop > boardBounds.bottom) headerTop + headerH + (4f * density) else boardBounds.bottom + (4f * density)
+            val defaultTop = statusTop + statusH + (4f * density)
+            val maxTop = if (height > 0) (height.toFloat() - panelHeight - 10f).coerceAtLeast(boardBounds.bottom + 4f * density) else defaultTop
+            defaultTop.coerceAtMost(maxTop)
+        }
+
+        correctionPanelBounds.set(
+            boardBounds.left,
+            panelTop,
+            boardBounds.right,
+            panelTop + panelHeight
+        )
+        editorBounds.set(correctionPanelBounds)
+
+        val editorW = correctionPanelBounds.width()
+        val editorL = correctionPanelBounds.left
+
+        // 1. Palet Bidak (P, N, B, R, Q, K - Putih & Hitam)
+        palettePieceBounds.clear()
+        editorPaletteRects.clear()
+
+        // Row 1: White Pieces
+        val whitePieces = listOf('P', 'N', 'B', 'R', 'Q', 'K')
+        val itemW = (editorW - pad * 7) / 6f
+        for (i in whitePieces.indices) {
+            val p = whitePieces[i]
+            val l = editorL + pad + i * (itemW + pad)
+            val t = panelTop + pad
+            val rect = RectF(l, t, l + itemW, t + rowH)
+            palettePieceBounds[p] = rect
+            editorPaletteRects.add(Pair(rect, p))
+        }
+
+        // Row 2: Black Pieces
+        val blackPieces = listOf('p', 'n', 'b', 'r', 'q', 'k')
+        for (i in blackPieces.indices) {
+            val p = blackPieces[i]
+            val l = editorL + pad + i * (itemW + pad)
+            val t = panelTop + pad * 2 + rowH
+            val rect = RectF(l, t, l + itemW, t + rowH)
+            palettePieceBounds[p] = rect
+            editorPaletteRects.add(Pair(rect, p))
+        }
+
+        // Row 3: Action Buttons [ 🗑️ Hapus ] [ ⚪/⚫ Giliran ] [ 🔄 Kosongkan ] [ ✅ Selesai ]
+        val row3T = panelTop + pad * 3 + rowH * 2
+        val btnW = (editorW - pad * 5) / 4f
+
+        deleteToolButtonBounds.set(editorL + pad, row3T, editorL + pad + btnW, row3T + rowH)
+        palettePieceBounds['X'] = deleteToolButtonBounds
+        editorPaletteRects.add(Pair(deleteToolButtonBounds, 'X'))
+
+        turnToggleButtonBounds.set(editorL + pad * 2 + btnW, row3T, editorL + pad * 2 + btnW * 2, row3T + rowH)
+        clearBoardButtonBounds.set(editorL + pad * 3 + btnW * 2, row3T, editorL + pad * 3 + btnW * 3, row3T + rowH)
+        finishButtonBounds.set(editorL + pad * 4 + btnW * 3, row3T, editorL + editorW - pad, row3T + rowH)
+
+        editorActionBtnRects.clear()
+        editorActionBtnRects.add(Pair(turnToggleButtonBounds, "TURN"))
+        editorActionBtnRects.add(Pair(clearBoardButtonBounds, "CLEAR"))
+        editorActionBtnRects.add(Pair(finishButtonBounds, "DONE"))
+    }
+
+    fun clearAllPiecesForCorrection() {
+        board.fill('.')
+        selectedSquare = null
+        selectedPalettePiece = null
+    }
+
+    fun getSquareNameFromCoordinates(x: Float, y: Float): String {
+        val sqW = boardBounds.width() / 8f
+        val sqH = boardBounds.height() / 8f
+        val col = ((x - boardBounds.left) / sqW).toInt().coerceIn(0, 7)
+        val row = ((y - boardBounds.top) / sqH).toInt().coerceIn(0, 7)
+        val bRow = if (isBoardFlipped) 7 - row else row
+        val bCol = if (isBoardFlipped) 7 - col else col
+        val sqIdx = bRow * 8 + bCol
+        return idx2notation(sqIdx)
+    }
+
+    fun setPieceAtSquare(square: String, piece: Char) {
+        val sqIdx = notation2idx(square)
+        if (sqIdx in 0..63) {
+            board[sqIdx] = piece
+        }
+    }
+
+    fun removePieceAtSquare(square: String) {
+        val sqIdx = notation2idx(square)
+        if (sqIdx in 0..63) {
+            board[sqIdx] = '.'
+        }
+    }
+
+    fun notation2idx(sqName: String): Int {
+        if (sqName.length != 2) return -1
+        val file = sqName[0] - 'a'
+        val rank = 8 - (sqName[1] - '0')
+        if (file !in 0..7 || rank !in 0..7) return -1
+        return rank * 8 + file
+    }
+
+    fun generateFenFromCurrentBoard(): String {
+        return generateFen()
+    }
+
+    fun enterCorrectionMode() {
+        enterBoardCorrectionMode()
+    }
+
+    fun exitCorrectionMode() {
+        exitBoardCorrectionMode()
+    }
+
     fun enterBoardCorrectionMode() {
         isCorrectionMode = true
-
-        // 1. Backup user preferences
-        backupPieceAlpha = pieceAlpha
-        backupGridAlpha = gridAlpha
-        backupHighlightAlpha = highlightAlpha
-        backupArrowAlpha = arrowAlpha
-        backupMoveGuideAlpha = moveGuideAlpha
-
-        // 2. Set custom correction mode values:
         pieceAlpha = 0.50f       // 50% agar bidak asli game di bawah terlihat
-        gridAlpha = 0.0f        // 0% (Tembus pandang total)
-        highlightAlpha = 0.0f   // 0%
-        arrowAlpha = 0.0f       // 0%
-        moveGuideAlpha = 0.0f   // 0%
+        val alpha50 = 128
+        pieceBitmapPaint.alpha = alpha50
+        whitePieceFillPaint.alpha = alpha50
+        whitePieceStrokePaint.alpha = alpha50
+        blackPieceFillPaint.alpha = alpha50
+        blackPieceStrokePaint.alpha = alpha50
 
-        selectedEditorPiece = null
+        selectedPalettePiece = null
         selectedSquare = null
+        setupCorrectionLayoutMetrics()
+        requestLayout()
         postInvalidate()
+        Log.d("BoardCorrection", "🛠️ Masuk mode koreksi papan: Alpha bidak diatur ke 50%.")
     }
 
     fun exitBoardCorrectionMode() {
         isCorrectionMode = false
-
-        // 3. Kembalikan 100% ke setelan pengguna sebelumnya
-        pieceAlpha = backupPieceAlpha
-        gridAlpha = backupGridAlpha
-        highlightAlpha = backupHighlightAlpha
-        arrowAlpha = backupArrowAlpha
-        moveGuideAlpha = backupMoveGuideAlpha
-
-        selectedEditorPiece = null
+        selectedPalettePiece = null
         selectedSquare = null
+        loadAlphaPreferences() // Kembalikan transparansi bidak normal dari SharedPreferences
+
+        // Buat FEN baru dari posisi papan hasil editan
+        val newFen = generateFenFromCurrentBoard()
+        try {
+            loadFen(newFen)
+            snapshotHistory.clear()
+            moveHistory.clear()
+            lastMoveFrom = null
+            lastMoveTo = null
+            engineBestMove = null
+            evalText = ""
+            isEngineCalculating = false
+        } catch (e: Exception) {
+            Log.w("BoardCorrection", "Error reloading FEN on exit correction", e)
+        }
+
+        requestLayout()
         postInvalidate()
+        Toast.makeText(context, "✅ Posisi papan berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+        checkAndTriggerStockfishTurn()
+        Log.d("BoardCorrection", "✅ Keluar dari mode koreksi. FEN baru: $newFen")
     }
 
     fun toggleCorrectionMode() {
@@ -745,20 +915,32 @@ class InteractiveBoardOverlayView(
         Toast.makeText(context, "↺ Langkah berhasil di-undo!", Toast.LENGTH_SHORT).show()
     }
 
-    fun setOpponentColor(color: PlayerColor) {
+    fun switchSideAndResetGame(opponentIsWhite: Boolean) {
         evalTimeoutJob?.cancel()
         arrowDismissJob?.cancel()
         autoHideJob?.cancel()
-        val isGameInProgress = moveHistory.isNotEmpty()
-        opponentColor = color
-        stockfishColor = if (color == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
-        isBoardFlipped = (color == PlayerColor.WHITE)
 
-        if (isGameInProgress) {
-            Toast.makeText(context, "Pihak diubah, mereset papan...", Toast.LENGTH_SHORT).show()
+        if (opponentIsWhite) {
+            // Lawan Putih: User Putih (Atas), Engine Hitam (Bawah) -> Board Flipped
+            opponentColor = PlayerColor.WHITE
+            stockfishColor = PlayerColor.BLACK
+            isBoardFlipped = true
+        } else {
+            // Lawan Hitam: User Hitam (Atas), Engine Putih (Bawah) -> Board Normal
+            opponentColor = PlayerColor.BLACK
+            stockfishColor = PlayerColor.WHITE
+            isBoardFlipped = false
         }
 
-        // Total reset on side switch
+        try {
+            context.getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("is_board_flipped", isBoardFlipped)
+                .putString("engine_side", if (opponentIsWhite) "BLACK" else "WHITE")
+                .apply()
+        } catch (ignored: Exception) {}
+
+        // Total reset bersih ke FEN awal
         isArrowVisible = false
         castlingRights = "KQkq"
         halfMoveClock = 0
@@ -776,7 +958,14 @@ class InteractiveBoardOverlayView(
         currentTurn = PlayerColor.WHITE
         postInvalidate()
 
-        checkAndTriggerStockfishTurn()
+        if (stockfishColor == PlayerColor.WHITE) {
+            checkAndTriggerStockfishTurn() // Mesin Putih langsung ambil langkah pertama otomatis
+        }
+        Log.d("ChessGame", "🔄 Ganti sisi terdeteksi: Papan otomatis di-reset bersih ke FEN awal.")
+    }
+
+    fun setOpponentColor(color: PlayerColor) {
+        switchSideAndResetGame(color == PlayerColor.WHITE)
     }
 
     fun flipBoard() {
@@ -1183,37 +1372,25 @@ class InteractiveBoardOverlayView(
     }
 
     private fun drawEditorPalette(canvas: Canvas, editorTop: Float) {
-        editorPaletteRects.clear()
-        editorActionBtnRects.clear()
+        setupCorrectionLayoutMetrics(editorTop)
 
         val density = resources.displayMetrics.density
-        val editorW = boardRect.width()
-        val editorL = boardRect.left
-        val pad = 6f * density
         val rowH = 38f * density
-        val editorH = rowH * 3 + pad * 4
-        val editorBounds = RectF(editorL, editorTop, editorL + editorW, editorTop + editorH)
 
-        canvas.drawRoundRect(editorBounds, 8f * density, 8f * density, editorBgPaint)
-        canvas.drawRoundRect(editorBounds, 8f * density, 8f * density, editorBorderPaint)
+        canvas.drawRoundRect(correctionPanelBounds, 8f * density, 8f * density, editorBgPaint)
+        canvas.drawRoundRect(correctionPanelBounds, 8f * density, 8f * density, editorBorderPaint)
 
         // Row 1: White Pieces
-        val whitePieces = listOf('K', 'Q', 'R', 'B', 'N', 'P')
-        val itemW = (editorW - pad * 7) / 6f
-        for (i in whitePieces.indices) {
-            val p = whitePieces[i]
-            val l = editorL + pad + i * (itemW + pad)
-            val t = editorTop + pad
-            val rect = RectF(l, t, l + itemW, t + rowH)
-            editorPaletteRects.add(Pair(rect, p))
-
-            val isSel = (selectedEditorPiece == p)
+        val whitePieces = listOf('P', 'N', 'B', 'R', 'Q', 'K')
+        for (p in whitePieces) {
+            val rect = palettePieceBounds[p] ?: continue
+            val isSel = (selectedPalettePiece == p || selectedEditorPiece == p)
             canvas.drawRoundRect(rect, 6f * density, 6f * density, if (isSel) editorSelectedBgPaint else editorItemBgPaint)
             if (isSel) canvas.drawRoundRect(rect, 6f * density, 6f * density, editorSelectedStrokePaint)
 
             val bitmap = pieceBitmapCache[p]
             if (bitmap != null) {
-                val left = rect.left + (itemW - bitmap.width) / 2f
+                val left = rect.left + (rect.width() - bitmap.width) / 2f
                 val top = rect.top + (rowH - bitmap.height) / 2f
                 canvas.drawBitmap(bitmap, left, top, palettePiecePaint)
             } else {
@@ -1230,21 +1407,16 @@ class InteractiveBoardOverlayView(
         }
 
         // Row 2: Black Pieces
-        val blackPieces = listOf('k', 'q', 'r', 'b', 'n', 'p')
-        for (i in blackPieces.indices) {
-            val p = blackPieces[i]
-            val l = editorL + pad + i * (itemW + pad)
-            val t = editorTop + pad * 2 + rowH
-            val rect = RectF(l, t, l + itemW, t + rowH)
-            editorPaletteRects.add(Pair(rect, p))
-
-            val isSel = (selectedEditorPiece == p)
+        val blackPieces = listOf('p', 'n', 'b', 'r', 'q', 'k')
+        for (p in blackPieces) {
+            val rect = palettePieceBounds[p] ?: continue
+            val isSel = (selectedPalettePiece == p || selectedEditorPiece == p)
             canvas.drawRoundRect(rect, 6f * density, 6f * density, if (isSel) editorSelectedBgPaint else editorItemBgPaint)
             if (isSel) canvas.drawRoundRect(rect, 6f * density, 6f * density, editorSelectedStrokePaint)
 
             val bitmap = pieceBitmapCache[p]
             if (bitmap != null) {
-                val left = rect.left + (itemW - bitmap.width) / 2f
+                val left = rect.left + (rect.width() - bitmap.width) / 2f
                 val top = rect.top + (rowH - bitmap.height) / 2f
                 canvas.drawBitmap(bitmap, left, top, palettePiecePaint)
             } else {
@@ -1261,39 +1433,28 @@ class InteractiveBoardOverlayView(
         }
 
         // Row 3: Action Buttons [ 🗑️ Hapus ] [ ⚪/⚫ Giliran ] [ 🔄 Kosongkan ] [ ✅ Selesai ]
-        val row3T = editorTop + pad * 3 + rowH * 2
-        val btnW = (editorW - pad * 5) / 4f
-
         // 1. Delete Tool (char 'X')
-        val delRect = RectF(editorL + pad, row3T, editorL + pad + btnW, row3T + rowH)
-        editorPaletteRects.add(Pair(delRect, 'X'))
-        val isDelSel = (selectedEditorPiece == 'X')
-        canvas.drawRoundRect(delRect, 6f * density, 6f * density, if (isDelSel) editorSelectedBgPaint else editorItemBgPaint)
+        val isDelSel = (selectedPalettePiece == 'X' || selectedEditorPiece == 'X')
+        canvas.drawRoundRect(deleteToolButtonBounds, 6f * density, 6f * density, if (isDelSel) editorSelectedBgPaint else editorItemBgPaint)
         editorActionTxtPaint.color = if (isDelSel) Color.BLACK else Color.rgb(248, 113, 113)
         editorActionTxtPaint.textSize = (rowH * 0.38f).coerceIn(10f, 13f)
-        canvas.drawText("🗑️ Hapus", delRect.centerX(), delRect.centerY() + 5f, editorActionTxtPaint)
+        canvas.drawText("🗑️ Hapus", deleteToolButtonBounds.centerX(), deleteToolButtonBounds.centerY() + 5f, editorActionTxtPaint)
 
         // 2. Turn Toggle Button
-        val turnRect = RectF(editorL + pad * 2 + btnW, row3T, editorL + pad * 2 + btnW * 2, row3T + rowH)
-        editorActionBtnRects.add(Pair(turnRect, "TURN"))
-        canvas.drawRoundRect(turnRect, 6f * density, 6f * density, editorActionBtnBgPaint)
+        canvas.drawRoundRect(turnToggleButtonBounds, 6f * density, 6f * density, editorActionBtnBgPaint)
         editorActionTxtPaint.color = Color.WHITE
         val turnStr = if (currentTurn == PlayerColor.WHITE) "⚪ Putih" else "⚫ Hitam"
-        canvas.drawText(turnStr, turnRect.centerX(), turnRect.centerY() + 5f, editorActionTxtPaint)
+        canvas.drawText(turnStr, turnToggleButtonBounds.centerX(), turnToggleButtonBounds.centerY() + 5f, editorActionTxtPaint)
 
         // 3. Clear Board Button
-        val clearRect = RectF(editorL + pad * 3 + btnW * 2, row3T, editorL + pad * 3 + btnW * 3, row3T + rowH)
-        editorActionBtnRects.add(Pair(clearRect, "CLEAR"))
-        canvas.drawRoundRect(clearRect, 6f * density, 6f * density, editorActionBtnBgPaint)
+        canvas.drawRoundRect(clearBoardButtonBounds, 6f * density, 6f * density, editorActionBtnBgPaint)
         editorActionTxtPaint.color = Color.rgb(251, 191, 36)
-        canvas.drawText("🔄 Reset", clearRect.centerX(), clearRect.centerY() + 5f, editorActionTxtPaint)
+        canvas.drawText("🔄 Reset", clearBoardButtonBounds.centerX(), clearBoardButtonBounds.centerY() + 5f, editorActionTxtPaint)
 
         // 4. Finish / Done Button
-        val doneRect = RectF(editorL + pad * 4 + btnW * 3, row3T, editorL + editorW - pad, row3T + rowH)
-        editorActionBtnRects.add(Pair(doneRect, "DONE"))
-        canvas.drawRoundRect(doneRect, 6f * density, 6f * density, editorActionDoneBgPaint)
+        canvas.drawRoundRect(finishButtonBounds, 6f * density, 6f * density, editorActionDoneBgPaint)
         editorActionTxtPaint.color = Color.BLACK
-        canvas.drawText("✅ Selesai", doneRect.centerX(), doneRect.centerY() + 5f, editorActionTxtPaint)
+        canvas.drawText("✅ Selesai", finishButtonBounds.centerX(), finishButtonBounds.centerY() + 5f, editorActionTxtPaint)
     }
 
     private fun drawMenuModal(canvas: Canvas) {
@@ -1871,14 +2032,19 @@ class InteractiveBoardOverlayView(
     // ====== TOUCH HANDLING ======
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        val touchX = event.x
-        val touchY = event.y
+        val x = event.x
+        val y = event.y
 
-        // 1. PRIORITAS UTAMA: JIKA DIALOG / MENU PENGATURAN SEDANG TERBUKA
+        // 1. PRIORITAS UTAMA: JIKA DALAM MODE KOREKSI PAPAN
+        if (isCorrectionModeActive) {
+            return handleCorrectionTouch(event)
+        }
+
+        // 2. Dialog Pengaturan & Menu Kontrol (Jika Aktif)
         if (isMenuOpen) {
             autoHideJob?.cancel() // Hentikan timer auto-hide saat menu dibuka
 
-            if (modalCardRect.contains(touchX, touchY)) {
+            if (modalCardRect.contains(x, y)) {
                 // Sentuhan di dalam kartu dialog pengaturan -> proses dan konsumsi penuh!
                 return onTouchEvent(event)
             }
@@ -1893,8 +2059,8 @@ class InteractiveBoardOverlayView(
             return true // Cegah tembus ke aksi hide papan saat menu terbuka
         }
 
-        // 2. Cek Tombol Sembunyi (Mata)
-        if (btnEyeBounds.contains(touchX, touchY)) {
+        // 3. Tombol Header (Mata & Menu Titik Tiga)
+        if (btnEyeBounds.contains(x, y)) {
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 isMenuOpen = false
                 currentMenuPage = MenuPage.MAIN
@@ -1904,8 +2070,7 @@ class InteractiveBoardOverlayView(
             return true
         }
 
-        // 3. Cek Tombol Menu Pengaturan (Titik Tiga)
-        if (btnMenuBounds.contains(touchX, touchY)) {
+        if (btnMenuBounds.contains(x, y)) {
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 if (onOpenSettingsRequested != null) {
                     onOpenSettingsRequested?.invoke()
@@ -1921,24 +2086,19 @@ class InteractiveBoardOverlayView(
             return true
         }
 
-        // 4. Cek Palette Koreksi
-        if (isCorrectionMode && editorBounds.contains(touchX, touchY)) {
-            return onTouchEvent(event)
-        }
-
-        // 5. Cek Area Papan Catur -> Proses Interaksi Bidak & Papan
-        if (boardRect.contains(touchX, touchY)) {
+        // 4. Area Papan Catur Normal
+        if (boardRect.contains(x, y)) {
             return handleChessBoardTouch(event)
         }
 
-        // 6. Cek Header / Status Bounds (jika tidak ghost mode)
+        // Header / Status Bounds (jika tidak ghost mode)
         if (!isGhostControlsEnabled) {
-            if (headerBounds.contains(touchX, touchY) || statusBounds.contains(touchX, touchY)) {
+            if (headerBounds.contains(x, y) || statusBounds.contains(x, y)) {
                 return onTouchEvent(event)
             }
         }
 
-        // 7. Di luar seluruh area interaktif di atas -> WAJIB RETURN FALSE agar tembus 100% ke game!
+        // 5. Di Luar Semua Elemen -> Tembus ke Game di Bawahnya!
         return false
     }
 
@@ -2169,9 +2329,8 @@ class InteractiveBoardOverlayView(
                     }
 
                     // 4. If in Correction Mode, handle editor interaction
-                    if (isCorrectionMode) {
-                        handleCorrectionTap(x, y)
-                        return true
+                    if (isCorrectionModeActive) {
+                        return handleCorrectionTouch(event)
                     }
 
                     // 5. Board tap interaction when modal is closed & normal mode
@@ -2202,87 +2361,85 @@ class InteractiveBoardOverlayView(
         return super.onTouchEvent(event)
     }
 
-    private fun handleCorrectionTap(tapX: Float, tapY: Float) {
-        // Tap on 8x8 Board
-        if (boardRect.contains(tapX, tapY)) {
-            val sqW = boardRect.width() / 8f
-            val sqH = boardRect.height() / 8f
-            val col = ((tapX - boardRect.left) / sqW).toInt().coerceIn(0, 7)
-            val row = ((tapY - boardRect.top) / sqH).toInt().coerceIn(0, 7)
-            val bRow = if (isBoardFlipped) 7 - row else row
-            val bCol = if (isBoardFlipped) 7 - col else col
-            val clicked = bRow * 8 + bCol
+    private fun handleCorrectionTouch(event: MotionEvent): Boolean {
+        val x = event.x
+        val y = event.y
 
-            when {
-                selectedEditorPiece == 'X' -> {
-                    board[clicked] = '.'
-                }
-                selectedEditorPiece != null -> {
-                    board[clicked] = selectedEditorPiece!!
-                }
-                else -> {
-                    // Free Move / Swap piece on board
-                    if (selectedSquare == null) {
-                        if (board[clicked] != '.') {
-                            selectedSquare = clicked
-                        }
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                // 1. Cek Klik Tombol Selesai
+                if (finishButtonBounds.contains(x, y)) {
+                    if (!board.contains('K') || !board.contains('k')) {
+                        Toast.makeText(context, "⚠️ Kedua Raja (♔ & ♚) harus ada di papan!", Toast.LENGTH_SHORT).show()
                     } else {
-                        val from = selectedSquare!!
-                        if (from == clicked) {
-                            selectedSquare = null
-                        } else {
-                            board[clicked] = board[from]
-                            board[from] = '.'
-                            selectedSquare = null
-                        }
+                        exitCorrectionMode()
                     }
+                    return true
                 }
-            }
-            postInvalidate()
-            return
-        }
 
-        // Tap on Palette Items
-        for ((rect, pChar) in editorPaletteRects) {
-            if (rect.contains(tapX, tapY)) {
-                selectedEditorPiece = if (selectedEditorPiece == pChar) null else pChar
-                selectedSquare = null
-                postInvalidate()
-                return
-            }
-        }
+                // 2. Cek Klik Tombol Kosongkan Papan
+                if (clearBoardButtonBounds.contains(x, y)) {
+                    clearAllPiecesForCorrection()
+                    postInvalidate()
+                    return true
+                }
 
-        // Tap on Action Buttons
-        for ((rect, action) in editorActionBtnRects) {
-            if (rect.contains(tapX, tapY)) {
-                when (action) {
-                    "TURN" -> {
-                        currentTurn = if (currentTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
-                        postInvalidate()
-                    }
-                    "CLEAR" -> {
-                        board.fill('.')
+                // Cek Klik Tombol Ganti Giliran
+                if (turnToggleButtonBounds.contains(x, y)) {
+                    currentTurn = if (currentTurn == PlayerColor.WHITE) PlayerColor.BLACK else PlayerColor.WHITE
+                    postInvalidate()
+                    return true
+                }
+
+                // 3. Cek Pemilihan Bidak dari Palet
+                for ((piece, bounds) in palettePieceBounds) {
+                    if (bounds.contains(x, y)) {
+                        selectedPalettePiece = if (selectedPalettePiece == piece) null else piece
                         selectedSquare = null
-                        selectedEditorPiece = null
                         postInvalidate()
-                    }
-                    "DONE" -> {
-                        if (!board.contains('K') || !board.contains('k')) {
-                            Toast.makeText(context, "⚠️ Kedua Raja (♔ & ♚) harus ada di papan!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            isCorrectionMode = false
-                            selectedSquare = null
-                            selectedEditorPiece = null
-                            requestLayout()
-                            postInvalidate()
-                            Toast.makeText(context, "✅ Posisi papan berhasil diperbarui!", Toast.LENGTH_SHORT).show()
-                            checkAndTriggerStockfishTurn()
-                        }
+                        return true
                     }
                 }
-                return
+
+                // 4. Cek Sentuhan di Petak Papan Catur (Taruh / Hapus Bidak)
+                if (boardBounds.contains(x, y)) {
+                    val square = getSquareNameFromCoordinates(x, y)
+                    val sqIdx = notation2idx(square)
+                    if (sqIdx in 0..63) {
+                        if (selectedPalettePiece != null) {
+                            if (selectedPalettePiece == 'X') {
+                                removePieceAtSquare(square)
+                            } else {
+                                setPieceAtSquare(square, selectedPalettePiece!!)
+                            }
+                        } else {
+                            if (selectedSquare == null) {
+                                if (board[sqIdx] != '.') {
+                                    selectedSquare = sqIdx
+                                }
+                            } else {
+                                val from = selectedSquare!!
+                                if (from == sqIdx) {
+                                    removePieceAtSquare(square)
+                                    selectedSquare = null
+                                } else {
+                                    board[sqIdx] = board[from]
+                                    board[from] = '.'
+                                    selectedSquare = null
+                                }
+                            }
+                        }
+                    }
+                    postInvalidate()
+                    return true
+                }
+                return true
+            }
+            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP -> {
+                return true
             }
         }
+        return true
     }
 
     private fun handleModalTap(tapX: Float, tapY: Float) {

@@ -15,6 +15,7 @@ import kotlin.math.roundToInt
 class SettingsOverlayView(
     context: Context,
     private val onBackToMainMenu: (() -> Unit)? = null,
+    private val onVisualSettingsChanged: (() -> Unit)? = null,
     private val onClose: () -> Unit
 ) : FrameLayout(context) {
 
@@ -295,38 +296,77 @@ class SettingsOverlayView(
         // --- SECTION: TRANSPARANSI & VISUAL ---
         addSectionHeader("🎨 Transparansi Visual")
 
-        val boardAlpha = prefs.getSafeFloat("grid_alpha", prefs.getSafeFloat("board_alpha", 0.85f)).coerceIn(0f, 1f)
-        addSliderItem("Transparansi Papan / Grid", "${(boardAlpha * 100).toInt()}%", (boardAlpha * 100).toInt(), 100) { p ->
-            val a = (p / 100f).coerceIn(0f, 1f)
-            prefs.edit().putFloat("grid_alpha", a).putFloat("board_alpha", a).apply()
-            "${p}%"
-        }
-
-        val dotsAlpha = prefs.getSafeFloat("guide_dots_alpha", 0.80f).coerceIn(0.05f, 1f)
-        addSliderItem("Move Guide Dots", "${(dotsAlpha * 100).toInt()}%", (dotsAlpha * 100).toInt(), 100) { p ->
-            val a = (p / 100f).coerceIn(0.05f, 1f)
-            prefs.edit().putFloat("guide_dots_alpha", a).apply()
-            "${p}%"
-        }
-
-        val piecesAlpha = prefs.getSafeFloat("pieces_alpha", prefs.getSafeFloat("piece_alpha", 0.85f)).coerceIn(0.05f, 1f)
+        // 1. Bidak Catur (alpha_pieces)
+        val piecesAlpha = prefs.getSafeFloat("alpha_pieces", prefs.getSafeFloat("piece_alpha", prefs.getSafeFloat("pieces_alpha", 1.0f))).coerceIn(0.05f, 1f)
         addSliderItem("Bidak Catur", "${(piecesAlpha * 100).toInt()}%", (piecesAlpha * 100).toInt(), 100) { p ->
             val a = (p / 100f).coerceIn(0.05f, 1f)
-            prefs.edit().putFloat("pieces_alpha", a).putFloat("piece_alpha", a).apply()
+            prefs.edit()
+                .putFloat("alpha_pieces", a)
+                .putFloat("piece_alpha", a)
+                .putFloat("pieces_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
             "${p}%"
         }
 
-        val arrowAlpha = prefs.getSafeFloat("arrow_alpha", 0.95f).coerceIn(0.05f, 1f)
+        // 2. Transparansi Papan / Grid (board_alpha)
+        val boardAlpha = prefs.getSafeFloat("board_alpha", prefs.getSafeFloat("grid_alpha", 0.85f)).coerceIn(0f, 1f)
+        addSliderItem("Transparansi Papan / Grid", "${(boardAlpha * 100).toInt()}%", (boardAlpha * 100).toInt(), 100) { p ->
+            val a = (p / 100f).coerceIn(0f, 1f)
+            prefs.edit()
+                .putFloat("board_alpha", a)
+                .putFloat("grid_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
+            "${p}%"
+        }
+
+        // 3. Panah Langkah (alpha_arrows)
+        val arrowAlpha = prefs.getSafeFloat("alpha_arrows", prefs.getSafeFloat("arrow_alpha", 0.95f)).coerceIn(0.05f, 1f)
         addSliderItem("Panah Langkah", "${(arrowAlpha * 100).toInt()}%", (arrowAlpha * 100).toInt(), 100) { p ->
             val a = (p / 100f).coerceIn(0.05f, 1f)
-            prefs.edit().putFloat("arrow_alpha", a).apply()
+            prefs.edit()
+                .putFloat("alpha_arrows", a)
+                .putFloat("arrow_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
             "${p}%"
         }
 
-        val hlAlpha = prefs.getSafeFloat("highlight_alpha", 0.50f).coerceIn(0.05f, 1f)
+        // 4. Highlight Petak (alpha_highlights)
+        val hlAlpha = prefs.getSafeFloat("alpha_highlights", prefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1f)
         addSliderItem("Highlight Petak", "${(hlAlpha * 100).toInt()}%", (hlAlpha * 100).toInt(), 100) { p ->
             val a = (p / 100f).coerceIn(0.05f, 1f)
-            prefs.edit().putFloat("highlight_alpha", a).apply()
+            prefs.edit()
+                .putFloat("alpha_highlights", a)
+                .putFloat("highlight_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
+            "${p}%"
+        }
+
+        // 5. Move Guide Dots (alpha_dots)
+        val dotsAlpha = prefs.getSafeFloat("alpha_dots", prefs.getSafeFloat("guide_dots_alpha", prefs.getSafeFloat("move_guide_alpha", 0.80f))).coerceIn(0.05f, 1f)
+        addSliderItem("Move Guide Dots", "${(dotsAlpha * 100).toInt()}%", (dotsAlpha * 100).toInt(), 100) { p ->
+            val a = (p / 100f).coerceIn(0.05f, 1f)
+            prefs.edit()
+                .putFloat("alpha_dots", a)
+                .putFloat("guide_dots_alpha", a)
+                .putFloat("move_guide_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
+            "${p}%"
+        }
+
+        // 6. Floating Eye (alpha_floating_eye)
+        val eyeAlpha = prefs.getSafeFloat("alpha_floating_eye", prefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1f)
+        addSliderItem("Tombol Floating Eye", "${(eyeAlpha * 100).toInt()}%", (eyeAlpha * 100).toInt(), 100) { p ->
+            val a = (p / 100f).coerceIn(0.05f, 1f)
+            prefs.edit()
+                .putFloat("alpha_floating_eye", a)
+                .putFloat("floating_eye_alpha", a)
+                .apply()
+            onVisualSettingsChanged?.invoke()
             "${p}%"
         }
     }

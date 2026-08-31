@@ -1065,12 +1065,15 @@ class OverlayManager(private val context: Context) {
                 context = context,
                 onBackToMainMenu = {
                     hideSettingsOverlay()
-                    interactiveBoardView?.reloadVisualSettings()
+                    interactiveBoardView?.reloadVisualSettingsOnly()
                     onBackToMainMenu?.invoke()
+                },
+                onVisualSettingsChanged = {
+                    interactiveBoardView?.reloadVisualSettingsOnly()
                 },
                 onClose = {
                     hideSettingsOverlay()
-                    interactiveBoardView?.reloadVisualSettings()
+                    interactiveBoardView?.reloadVisualSettingsOnly()
                     onClose()
                 }
             )

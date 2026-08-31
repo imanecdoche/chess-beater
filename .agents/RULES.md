@@ -927,39 +927,37 @@ File ini adalah catatan instruksi dan aturan mutlak untuk proyek **Chess Beater*
       * Menyediakan extension function `getSafeFloat`, `getSafeInt`, `getSafeBoolean`, dan `getSafeString` yang kebal terhadap `ClassCastException` di seluruh komponen proyek.
     - Perbaikan Crash Service pada `MiniBoardOverlayService.kt` & `InteractiveBoardOverlayView.kt`:
       * Mengganti pembacaan SharedPreferences `auto_show_delay_sec`, `auto_hide_delay_sec`, dan visual bounds menjadi `getSafeFloat` dan `getSafeBoolean`.
-      * Menghilangkan crash fatal saat auto-hide/auto-show terpicu setelah kalibrasi cepat (hold 2 detik) atau saat rekomendasi engine selesai.
-    - Validasi & Deploy:
-      * `./gradlew compileDebugKotlin` & `./gradlew installDebug`.
+95. **Sprint 95 (2026-08-31): Interaksi Mode Koreksi Papan, Transparansi 50%, Sinkronisasi Slider Transparansi, Toggle Kalibrasi Cepat, & Auto-Reset Ganti Sisi**
+    - Interaksi Sentuh & Tombol Selesai Mode Koreksi (`InteractiveBoardOverlayView.kt`):
+      * Memperbaiki pembaruan bounding box `editorBounds` agar tidak ter-shadow oleh variabel lokal.
+      * Menetapkan urutan prioritas utama di `dispatchTouchEvent`: Jika `isCorrectionMode == true`, konsumsi touch pada `editorBounds` dan `boardRect` secara eksklusif dan return `true` agar tidak tembus ke game bawahnya.
+      * Tombol "✅ Selesai" memicu `exitBoardCorrectionMode()`, memulihkan alpha bidak normal, dan menutup panel editor.
+    - Transparansi Bidak 50% Mode Koreksi (`InteractiveBoardOverlayView.kt`):
+      * Saat masuk mode koreksi (`enterBoardCorrectionMode()`), alpha bidak diatur ke 128 (50% transparansi).
+      * Saat keluar mode koreksi (`exitBoardCorrectionMode()`), alpha bidak dipulihkan dari SharedPreferences (`alpha_pieces`).
+    - Sinkronisasi Slider Transparansi Granular (`SettingsOverlayView.kt`, `SettingsActivity.kt`, `InteractiveBoardOverlayView.kt`):
+      * Menyamakan key SharedPreferences: `alpha_pieces`, `board_alpha`, `alpha_arrows`, `alpha_highlights`, `alpha_dots`, `alpha_floating_eye`.
+      * SeekBar listener menyimpan nilai seketika dengan `.apply()` dan memicu `reloadVisualSettingsOnly()` pada canvas overlay tanpa menyentuh FEN.
+    - Toggle Kalibrasi Cepat Startup (`DashboardScreen.kt`, `MainActivity.kt`, `DashboardViewModel.kt`, `MiniBoardOverlayService.kt`):
+      * Menambahkan Switch "⚡ Kalibrasi Cepat Saat Startup" (`quick_alignment_enabled`, default: `true`).
+      * `MiniBoardOverlayService.kt` memeriksa preferensi: jika aktif menampilkan Quick Alignment HUD, jika dinonaktifkan langsung siap dalam mode Floating Eye tersembunyi.
+    - Auto-Reset Game Otomatis Saat Ganti Pihak (`InteractiveBoardOverlayView.kt` & `MiniBoardOverlayService.kt`):
+      * Menambahkan `switchSideAndResetGame(opponentIsWhite: Boolean)` yang mereset total FEN ke posisi awal, mengosongkan riwayat, mengatur warna giliran, dan memicu langkah pertama Stockfish jika mesin memegang Putih.
+    - Guardrails Keselamatan:
+      * Menjaga touch pass-through (`return false` di luar overlay).
+      * Tidak memanggil `resetGame()` saat user hanya membuka/menutup dialog pengaturan biasa.
+      * Logika validasi langkah legal catur dan giliran mesin tetap utuh dan aman.
 
-94. **Sprint 94 (2026-08-31): Kunci Pemilihan Bidak Berdasarkan Kepemilikan & Validasi Langkah Legal Catur**
-    - Kunci Pemilihan Bidak Berdasarkan Kepemilikan (`InteractiveBoardOverlayView.kt`):
-      * Di `handleBoardTap()` / sentuhan papan:
-        - Cek giliran user: hanya izinkan sentuhan jika giliran aktif sesuai dengan giliran user (`currentTurn == opponentColor` saat bukan mode koreksi).
-        - Kunci Kepemilikan Bidak: Bidak Putih HANYA dapat disentuh/dipilih oleh pemain Putih (`isPieceWhite == userIsWhite`), dan Bidak Hitam HANYA dapat disentuh/dipilih oleh pemain Hitam. Sentuhan pada bidak lawan/mesin ditolak seketika (`return`).
-    - Validasi Langkah Legal Catur Sebelum Eksekusi:
-      * Validasi bahwa langkah yang dicoba (`from` ke `to`) wajib valid sesuai aturan catur murni (`ChessLogic.isMoveLegal`), termasuk pencegahan langkah ilegal raja, pion mundur, benteng diagonal, dan pin raja.
-      * Langkah ilegal ditolak tanpa mengubah FEN atau memutar giliran.
-    - Guardrails Ketat:
-      * Menjaga fungsi `dispatchTouchEvent()` agar touch pass-through tetap utuh.
-      * Tidak memanggil `resetBoard()` saat membuka atau menutup dialog pengaturan.
-    - Validasi & Deploy:
-      * `./gradlew compileDebugKotlin` & `./gradlew installDebug`.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+96. **Sprint 96 (2026-08-31): Perbaikan Total Freeze Mode Koreksi Papan & Layout Metrics Eksplisit di InteractiveBoardOverlayView.kt**
+    - Hitung Ulang Bounds Panel & Palet Bidak Eksplisit (`InteractiveBoardOverlayView.kt`):
+      * Menambahkan `setupCorrectionLayoutMetrics()` yang mengukur `correctionPanelBounds`, `finishButtonBounds`, `clearBoardButtonBounds`, dan `palettePieceBounds` (6x2 piece grid: P,N,B,R,Q,K dan p,n,b,r,q,k).
+      * Memanggil `setupCorrectionLayoutMetrics()` setiap kali `enterCorrectionMode()` / `enterBoardCorrectionMode()` dipanggil dan saat layout bounds diperbarui / onDraw.
+    - Penanganan Event Sentuh Mode Koreksi Mandiri (`InteractiveBoardOverlayView.kt`):
+      * Mengimplementasikan `handleCorrectionTouch(event: MotionEvent): Boolean` untuk menangani pemilihan bidak dari palet, penempatan/penghapusan bidak pada petak papan (`setPieceAtSquare`, `removePieceAtSquare`), pengosongan papan (`clearAllPiecesForCorrection`), dan tombol Selesai (`exitCorrectionMode`).
+      * Mengaitkan langsung di `dispatchTouchEvent` prioritas utama: `if (isCorrectionMode || isCorrectionModeActive) return handleCorrectionTouch(event)`.
+    - Sinkronisasi Hasil Koreksi FEN & Controller (`InteractiveBoardOverlayView.kt`):
+      * Pada `exitCorrectionMode()` / `exitBoardCorrectionMode()`, posisikan FEN baru (`generateFenFromCurrentBoard()` / `generateFen()`), sinkronkan ke `chessGameController` jika ada, pulihkan transparansi normal (`loadAlphaPreferences()`), dan picu evaluasi giliran Stockfish jika relevan.
+    - Guardrails Keselamatan:
+      * Dilarang mengutak-atik logika validasi catur di luar mode koreksi.
+      * Touch pass-through normal game tetap bekerja 100% saat bukan mode koreksi.
 

@@ -26,6 +26,7 @@ data class DashboardUiState(
     val showFloatingHud: Boolean = true,
     val isStealthToastMode: Boolean = false,
     val isHapticAlertEnabled: Boolean = true,
+    val isQuickAlignmentEnabled: Boolean = true,
     val isSaveSessionLogsEnabled: Boolean = false,
     val savedLogsList: List<com.chessbeater.logging.SessionLogInfo> = emptyList(),
     // Dual service status
@@ -68,7 +69,9 @@ class DashboardViewModel(
     init {
         val loggingEnabled = com.chessbeater.logging.SessionLogger.isLoggingEnabled(app)
         val logs = com.chessbeater.logging.SessionLogger.getAllLogs(app)
-        _uiState.update { it.copy(isSaveSessionLogsEnabled = loggingEnabled, savedLogsList = logs) }
+        val quickAlignEnabled = app.getSharedPreferences("chessbeater_visual_prefs", android.content.Context.MODE_PRIVATE)
+            .getBoolean("quick_alignment_enabled", true)
+        _uiState.update { it.copy(isSaveSessionLogsEnabled = loggingEnabled, savedLogsList = logs, isQuickAlignmentEnabled = quickAlignEnabled) }
 
         viewModelScope.launch {
             preferencesRepository.userPreferencesFlow.collect { prefs ->
@@ -113,6 +116,14 @@ class DashboardViewModel(
     fun toggleFloatingHud(show: Boolean) = viewModelScope.launch { preferencesRepository.updateFloatingHud(show) }
     fun toggleStealthToastMode(stealth: Boolean) = viewModelScope.launch { preferencesRepository.updateStealthToast(stealth) }
     fun toggleHapticAlert(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateHapticAlert(enabled) }
+
+    fun toggleQuickAlignment(enabled: Boolean) {
+        app.getSharedPreferences("chessbeater_visual_prefs", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("quick_alignment_enabled", enabled)
+            .apply()
+        _uiState.update { it.copy(isQuickAlignmentEnabled = enabled) }
+    }
 
     fun toggleSaveSessionLogs(enabled: Boolean) {
         com.chessbeater.logging.SessionLogger.setLoggingEnabled(app, enabled)

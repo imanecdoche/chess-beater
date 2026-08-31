@@ -449,61 +449,77 @@ class MiniBoardOverlayService : Service() {
         }
 
         // Initial Startup State: Papan sembunyi secara default, Floating Eye siap di tepi layar
-        isBoardShowing = false
-        currentHideReason = OverlayHideReason.MANUAL
-        showFloatingEyeFromSaved()
-        Log.i(TAG, "MiniBoardOverlayService started in HIDDEN mode — Floating Eye ready at ($eyePosX, $eyePosY)")
+        val isQuickAlignEnabled = getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+            .getSafeBoolean("quick_alignment_enabled", true)
 
-        // Tampilkan Quick Alignment Grid HUD neon transparan untuk verifikasi posisi instan
-        val initialBoundsF = RectF(
-            savedBoardX.toFloat(),
-            savedBoardY.toFloat(),
-            (savedBoardX + savedBoardSizePx).toFloat(),
-            (savedBoardY + savedBoardSizePx).toFloat()
-        )
-        overlayManager?.showQuickAlignmentOverlay(initialBoundsF) { newBounds ->
-            savedBoardX = newBounds.left.toInt()
-            savedBoardY = newBounds.top.toInt()
-            savedBoardSizePx = newBounds.width().toInt().coerceIn(280, 1400)
-            debounceSaveBoardPosition()
+        if (isQuickAlignEnabled) {
+            isBoardShowing = false
+            currentHideReason = OverlayHideReason.MANUAL
+            showFloatingEyeFromSaved()
+            Log.i(TAG, "MiniBoardOverlayService started — Floating Eye ready at ($eyePosX, $eyePosY) with Quick Alignment HUD")
 
-            try {
-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putFloat("board_left", newBounds.left)
-                    .putFloat("board_top", newBounds.top)
-                    .putFloat("board_right", newBounds.right)
-                    .putFloat("board_bottom", newBounds.bottom)
-                    .apply()
-            } catch (ignored: Exception) {}
-
-            overlayManager?.snapInteractiveBoard(
-                Rect(savedBoardX, savedBoardY, savedBoardX + savedBoardSizePx, savedBoardY + savedBoardSizePx)
+            // Tampilkan Quick Alignment Grid HUD neon transparan untuk verifikasi posisi instan
+            val initialBoundsF = RectF(
+                savedBoardX.toFloat(),
+                savedBoardY.toFloat(),
+                (savedBoardX + savedBoardSizePx).toFloat(),
+                (savedBoardY + savedBoardSizePx).toFloat()
             )
-            Toast.makeText(this@MiniBoardOverlayService, "🔒 Posisi papan berhasil diselaraskan!", Toast.LENGTH_SHORT).show()
+            overlayManager?.showQuickAlignmentOverlay(initialBoundsF) { newBounds ->
+                savedBoardX = newBounds.left.toInt()
+                savedBoardY = newBounds.top.toInt()
+                savedBoardSizePx = newBounds.width().toInt().coerceIn(280, 1400)
+                debounceSaveBoardPosition()
 
-            // Munculkan QuickSideSelector dialog di tengah area papan
-            overlayManager?.showQuickSideSelector(
-                boardBounds = newBounds,
-                onSideSelected = { isOpponentWhite ->
-                    try {
-                        getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
-                            .edit()
-                            .putBoolean("is_board_flipped", isOpponentWhite)
-                            .putString("engine_side", if (isOpponentWhite) "BLACK" else "WHITE")
-                            .apply()
-                    } catch (ignored: Exception) {}
+                try {
+                    getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+                        .edit()
+                        .putFloat("board_left", newBounds.left)
+                        .putFloat("board_top", newBounds.top)
+                        .putFloat("board_right", newBounds.right)
+                        .putFloat("board_bottom", newBounds.bottom)
+                        .apply()
+                } catch (ignored: Exception) {}
 
-                    val interactiveView = overlayManager?.getInteractiveBoardView()
-                    interactiveView?.reloadBoardOrientation()
-                    val modeText = if (isOpponentWhite) "Lawan Putih (Mesin Hitam Bawah)" else "Lawan Hitam (Mesin Putih Bawah)"
-                    Toast.makeText(this@MiniBoardOverlayService, "⚔️ Mode diatur: $modeText", Toast.LENGTH_SHORT).show()
-                },
-                onDismiss = {}
-            )
+                overlayManager?.snapInteractiveBoard(
+                    Rect(savedBoardX, savedBoardY, savedBoardX + savedBoardSizePx, savedBoardY + savedBoardSizePx)
+                )
+                Toast.makeText(this@MiniBoardOverlayService, "🔒 Posisi papan berhasil diselaraskan!", Toast.LENGTH_SHORT).show()
+
+                // Munculkan QuickSideSelector dialog di tengah area papan
+                overlayManager?.showQuickSideSelector(
+                    boardBounds = newBounds,
+                    onSideSelected = { isOpponentWhite ->
+                        switchSideAndResetGame(isOpponentWhite)
+                    },
+                    onDismiss = {}
+                )
+            }
+        } else {
+            // Lewati kalibrasi cepat, langsung siapkan floating eye
+            isBoardShowing = false
+            currentHideReason = OverlayHideReason.MANUAL
+            overlayManager?.hideInteractiveBoard(detachOnly = true)
+            showFloatingEyeFromSaved()
+            Log.d("ServiceStartup", "⚡ Kalibrasi cepat dinonaktifkan: Langsung siap dalam mode tersembunyi.")
         }
 
         startAutoDetectionLoop()
+    }
+
+    fun switchSideAndResetGame(opponentIsWhite: Boolean) {
+        try {
+            getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("is_board_flipped", opponentIsWhite)
+                .putString("engine_side", if (opponentIsWhite) "BLACK" else "WHITE")
+                .apply()
+        } catch (ignored: Exception) {}
+
+        val interactiveView = overlayManager?.getInteractiveBoardView()
+        interactiveView?.switchSideAndResetGame(opponentIsWhite)
+        val modeText = if (opponentIsWhite) "Lawan Putih (Mesin Hitam Bawah)" else "Lawan Hitam (Mesin Putih Bawah)"
+        Toast.makeText(this@MiniBoardOverlayService, "⚔️ Mode diatur: $modeText", Toast.LENGTH_SHORT).show()
     }
 
     fun applyPreset(preset: CalibrationPreset) {
@@ -571,24 +587,10 @@ class MiniBoardOverlayService : Service() {
         overlayManager?.showMainControlMenu(
             boardBounds = boardRect,
             onSelectOpponentWhite = {
-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean("is_board_flipped", true)
-                    .putString("engine_side", "BLACK")
-                    .apply()
-                val interactiveView = overlayManager?.getInteractiveBoardView()
-                interactiveView?.reloadBoardOrientation()
-                Toast.makeText(this@MiniBoardOverlayService, "⚔️ Mode: Lawan Putih (Mesin Hitam Bawah)", Toast.LENGTH_SHORT).show()
+                switchSideAndResetGame(true)
             },
             onSelectOpponentBlack = {
-                getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean("is_board_flipped", false)
-                    .putString("engine_side", "WHITE")
-                    .apply()
-                val interactiveView = overlayManager?.getInteractiveBoardView()
-                interactiveView?.reloadBoardOrientation()
-                Toast.makeText(this@MiniBoardOverlayService, "⚔️ Mode: Lawan Hitam (Mesin Putih Bawah)", Toast.LENGTH_SHORT).show()
+                switchSideAndResetGame(false)
             },
             onToggleAutoDetect = {
                 val current = currentVisualPrefs.isAutoDetectionEnabled
