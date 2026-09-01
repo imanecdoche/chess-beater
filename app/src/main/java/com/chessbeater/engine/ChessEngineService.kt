@@ -97,26 +97,32 @@ class ChessEngineService(
         processManager.sendCommand("setoption name UCI_LimitStrength value false")
         processManager.sendCommand("setoption name Skill Level value 20")
         processManager.sendCommand("setoption name Threads value 2")
-        processManager.sendCommand("setoption name Hash value 16")
+        processManager.sendCommand("setoption name Hash value 32")
         processManager.sendCommand("isready")
-        Log.d("StockfishBeast", "🔥 Stockfish diatur ke Full Uncapped Grandmaster Mode (3500+ ELO)")
+        Log.d("StockfishNative", "🚀 Mode UNLIMITED MAX POWER Aktif (Skill Level 20, No Limit)")
     }
 
     fun setEloRating(targetElo: Int) {
         currentEloRating = targetElo
-        if (targetElo >= 2800) {
+        val clampedElo = targetElo.coerceIn(800, 3500)
+        Log.d("StockfishNative", "🎯 Mengonfigurasi Engine Power: $clampedElo ELO")
+
+        if (clampedElo >= 2800) {
             applyFullStrengthMode()
             return
         }
-        val clampedElo = targetElo.coerceIn(1320, 2799)
-        val skillLevel = (((clampedElo - 1320f) / (2800f - 1320f)) * 20f).toInt().coerceIn(0, 20)
+
+        val skillLevel = ((clampedElo - 800) * 19 / (2800 - 800)).coerceIn(0, 19)
+        val uciElo = clampedElo.coerceIn(1320, 3190)
 
         processManager.sendCommand("setoption name UCI_LimitStrength value true")
-        processManager.sendCommand("setoption name UCI_Elo value $clampedElo")
+        processManager.sendCommand("setoption name UCI_Elo value $uciElo")
         processManager.sendCommand("setoption name Skill Level value $skillLevel")
+        processManager.sendCommand("setoption name Threads value 2")
+        processManager.sendCommand("setoption name Hash value 32")
         processManager.sendCommand("isready")
 
-        Log.d("StockfishEngine", "✅ ELO diatur ke $clampedElo (Skill Level: $skillLevel/20)")
+        Log.d("StockfishNative", "⚖️ Mode Terkalibrasi Aktif: ELO=$uciElo, SkillLevel=$skillLevel")
     }
 
     override suspend fun initializeEngine(): Boolean = withContext(dispatcher) {

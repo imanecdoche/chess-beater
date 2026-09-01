@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F172A"
+    android:orientation="vertical">
+
+    <!-- TOP APP BAR -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#1E293B"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="#FFFFFF"
+            android:contentDescription="Kembali" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvPlaygroundTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎮 Arena Playground"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvEvalStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Giliran: Putih | Evaluasi: 0.00"
+                android:textColor="#38BDF8"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnFlipBoard"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:tint="#00E676"
+            android:contentDescription="Putar Papan" />
+
+        <ImageButton
+            android:id="@+id/btnCopyFen"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_share"
+            android:tint="#38BDF8"
+            android:contentDescription="Salin FEN" />
+
+        <ImageButton
+            android:id="@+id/btnResetMatch"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:tint="#EF4444"
+            android:contentDescription="Reset Pertandingan" />
+    </LinearLayout>
+
+    <!-- MODE TAB BAR -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="#161E2E"
+        android:padding="4dp">
+
+        <Button
+            android:id="@+id/tabUserVsEngine"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:backgroundTint="#00E676"
+            android:text="👤 vs 🤖"
+            android:textColor="#000000"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/tabDualBot"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:backgroundTint="#1E293B"
+            android:text="🤖 vs 🤖 Dual Bot"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/tabEditor"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:backgroundTint="#1E293B"
+            android:text="🛠️ Editor FEN"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- CENTER CHESSBOARD -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="8dp">
+
+        <com.chessbeater.playground.PlaygroundBoardView
+            android:id="@+id/boardView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
+    <!-- DYNAMIC CONTROL PANELS SCROLLER -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#161E2E"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- PANEL 1: USER VS ENGINE -->
+            <LinearLayout
+                android:id="@+id/panelUserVsEngine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <!-- SIDE SELECTOR -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pilihan Warna Bidak:"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/btnSideWhite"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="12dp"
+                        android:backgroundTint="#00E676"
+                        android:text="⚪ Putih"
+                        android:textColor="#000000"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btnSideBlack"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="8dp"
+                        android:backgroundTint="#334155"
+                        android:text="⚫ Hitam"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="10dp"
+                    android:background="#1E293B" />
+
+                <!-- ELO SLIDER -->
+                <TextView
+                    android:id="@+id/tvUserVsBotEloTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎯 Target Engine ELO: [ 2800 ELO ]"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvUserVsBotEloDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="👑 Grandmaster | Depth: 20-25+ | Max Think: 1000ms"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp" />
+
+                <SeekBar
+                    android:id="@+id/sbUserVsBotElo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:max="100"
+                    android:progress="74" />
+
+                <Button
+                    android:id="@+id/btnEngineStep"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:backgroundTint="#10B981"
+                    android:text="⚡ Paksa Engine Bergerak Sekarang"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- PANEL 2: DUAL BOT (ENGINE VS ENGINE) -->
+            <LinearLayout
+                android:id="@+id/panelDualBot"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- WHITE BOT ELO -->
+                <TextView
+                    android:id="@+id/tvWhiteBotEloTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚪ Bot Putih: [ 2000 ELO ]"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <SeekBar
+                    android:id="@+id/sbWhiteBotElo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:max="100"
+                    android:progress="44" />
+
+                <!-- BLACK BOT ELO -->
+                <TextView
+                    android:id="@+id/tvBlackBotEloTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="⚫ Bot Hitam: [ 2800 ELO ]"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <SeekBar
+                    android:id="@+id/sbBlackBotElo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:max="100"
+                    android:progress="74" />
+
+                <!-- MATCH SPEED -->
+                <TextView
+                    android:id="@+id/tvMatchSpeedTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="⏱️ Jeda Langkah Bot: [ 1000 ms ]"
+                    android:textColor="#38BDF8"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/sbMatchSpeed"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:max="28"
+                    android:progress="8" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnPlayPauseDuel"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#00E676"
+                        android:text="▶️ Mulai Duel Bot"
+                        android:textColor="#000000"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btnStepDuel"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#334155"
+                        android:text="⏭️ 1 Langkah"
+                        android:textColor="#FFFFFF" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- PANEL 3: BOARD EDITOR FEN -->
+            <LinearLayout
+                android:id="@+id/panelEditor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎨 Palet Bidak (Pilih bidak lalu tap petak papan):"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp" />
+
+                <!-- PALETTE ROW 1 (WHITE PIECES) -->
+                <LinearLayout
+                    android:id="@+id/paletteWhiteRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+                    <!-- Buttons added dynamically or defined -->
+                    <Button android:id="@+id/btnPalWP" android:layout_width="44dp" android:layout_height="44dp" android:text="♙" android:textSize="18sp" android:backgroundTint="#00E676" android:textColor="#000000" />
+                    <Button android:id="@+id/btnPalWN" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♘" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalWB" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♗" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalWR" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♖" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalWQ" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♕" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalWK" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♔" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalErase" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="🧹" android:textSize="16sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                </LinearLayout>
+
+                <!-- PALETTE ROW 2 (BLACK PIECES) -->
+                <LinearLayout
+                    android:id="@+id/paletteBlackRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btnPalBP" android:layout_width="44dp" android:layout_height="44dp" android:text="♟" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalBN" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♞" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalBB" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♝" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalBR" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♜" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalBQ" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♛" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                    <Button android:id="@+id/btnPalBK" android:layout_width="44dp" android:layout_height="44dp" android:layout_marginStart="4dp" android:text="♚" android:textSize="18sp" android:backgroundTint="#334155" android:textColor="#FFFFFF" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnInitialBoard"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#334155"
+                        android:text="Posisi Awal"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnClearBoard"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#EF4444"
+                        android:text="Kosongkan"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnToggleTurn"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#10B981"
+                        android:text="Giliran: W"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- EDIT TEXT FEN -->
+                <EditText
+                    android:id="@+id/etFen"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="10dp"
+                    android:background="#0F172A"
+                    android:paddingHorizontal="10dp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:hint="Masukkan FEN string di sini..."
+                    android:textColorHint="#64748B"
+                    android:singleLine="true" />
+
+                <Button
+                    android:id="@+id/btnLoadFen"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="6dp"
+                    android:backgroundTint="#38BDF8"
+                    android:text="📥 Muat FEN ke Papan"
+                    android:textColor="#000000"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

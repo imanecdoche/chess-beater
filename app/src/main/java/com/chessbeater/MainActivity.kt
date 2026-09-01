@@ -3,20 +3,23 @@ package com.chessbeater
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.View
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.lifecycleScope
 import com.chessbeater.capture.ScreenCaptureConfig
 import com.chessbeater.capture.ScreenCaptureService
@@ -26,11 +29,16 @@ import com.chessbeater.overlay.OverlayManager
 import com.chessbeater.overlay.OverlayService
 import com.chessbeater.ui.DashboardScreen
 import com.chessbeater.ui.DashboardViewModel
+import com.chessbeater.utils.AppLogger
+import android.content.SharedPreferences
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: DashboardViewModel by viewModels()
 
@@ -41,14 +49,51 @@ class MainActivity : ComponentActivity() {
     private var orchestrator: GameOrchestrator? = null
     private var standaloneOverlayManager: OverlayManager? = null
 
+    private lateinit var composeContainer: ComposeView
+    private lateinit var bottomNavigationView: BottomNavigationView
+    private lateinit var fabStartServiceCta: FloatingActionButton
+
+    private val configLogListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key != null) {
+            val value = prefs.all[key]
+            AppLogger.log("CONFIG_CHANGE", "⚙️ Nilai Pengaturan Berubah -> [$key] = $value")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        getSharedPreferences("chess_beater_prefs", Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(configLogListener)
+        getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(configLogListener)
+
+        AppLogger.log("NAV", "🏠 MainActivity Dimulai")
+
+        composeContainer = findViewById(R.id.composeContainer)
+        bottomNavigationView = findViewById(R.id.bottomNavigationView)
+        fabStartServiceCta = findViewById(R.id.fabStartServiceCta)
 
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
         registerActivityLaunchers()
 
-        setContent {
+        setupBottomNavigation()
+        setupCenterCtaFab()
+
+        composeContainer.setContent {
             val uiState by viewModel.uiState.collectAsState()
+
+            // Update FAB color & icon dynamically based on service running state
+            androidx.compose.runtime.LaunchedEffect(uiState.isServiceRunning) {
+                if (uiState.isServiceRunning) {
+                    fabStartServiceCta.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#EF4444"))
+                    fabStartServiceCta.setImageResource(R.drawable.ic_stop)
+                } else {
+                    fabStartServiceCta.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#10B981"))
+                    fabStartServiceCta.setImageResource(R.drawable.ic_play_arrow)
+                }
+            }
 
             // Synchronize running orchestrator with current user preferences
             androidx.compose.runtime.LaunchedEffect(uiState.targetApp, uiState.selectedEngine, uiState.powerPercentage) {
@@ -75,7 +120,6 @@ class MainActivity : ComponentActivity() {
                 onToggleAutoLaunch = { viewModel.toggleAutoLaunch(it) },
                 onToggleMiniBoard = { viewModel.toggleInteractiveMiniBoard(it) },
                 onToggleGhostMode = { viewModel.toggleGhostMode(it) },
-                onToggleTouchForwarding = { viewModel.toggleTouchForwarding(it) },
                 onToggleQuickAlignment = { viewModel.toggleQuickAlignment(it) },
                 onToggleSaveSessionLogs = { viewModel.toggleSaveSessionLogs(it) },
                 onDeleteLog = { viewModel.deleteLog(it) },
@@ -84,10 +128,75 @@ class MainActivity : ComponentActivity() {
                 onStartMiniBoardServiceClicked = { requestOverlayAndStartMiniBoard() },
                 onStopServiceClicked = { stopAllServices() },
                 onOpenFullSettingsClicked = {
-                    startActivity(Intent(this, com.chessbeater.ui.SettingsActivity::class.java))
+                    startActivity(Intent(this@MainActivity, com.chessbeater.ui.SettingsActivity::class.java))
+                },
+                onOpenPlaygroundClicked = {
+                    startActivity(Intent(this@MainActivity, com.chessbeater.playground.PlaygroundActivity::class.java))
                 }
             )
         }
+    }
+
+    private fun setupBottomNavigation() {
+        bottomNavigationView.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_target_app -> {
+                    AppLogger.log("NAV", "📱 Memilih Nav Target App")
+                    true
+                }
+                R.id.nav_engine -> {
+                    AppLogger.log("NAV", "⚙️ Memilih Nav Engine Settings")
+                    true
+                }
+                R.id.nav_presets -> {
+                    AppLogger.log("NAV", "🎯 Memilih Nav Kalibrasi Papan")
+                    startCalibrationFlow()
+                    true
+                }
+                R.id.nav_settings -> {
+                    AppLogger.log("NAV", "⚙️ Membuka Menu Settings")
+                    startActivity(Intent(this, com.chessbeater.ui.SettingsActivity::class.java))
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun setupCenterCtaFab() {
+        fabStartServiceCta.setOnClickListener {
+            val isRunning = viewModel.uiState.value.isServiceRunning
+            showServiceActionSheet(isRunning)
+        }
+    }
+
+    private fun showServiceActionSheet(isServiceRunning: Boolean) {
+        val dialog = BottomSheetDialog(this)
+        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_service_action, null)
+        dialog.setContentView(sheetView)
+
+        val btnMiniBoard = sheetView.findViewById<View>(R.id.btnActionStartMiniBoard)
+        val btnVision = sheetView.findViewById<View>(R.id.btnActionStartVision)
+        val btnStop = sheetView.findViewById<View>(R.id.btnActionStopService)
+
+        btnStop.visibility = if (isServiceRunning) View.VISIBLE else View.GONE
+
+        btnMiniBoard.setOnClickListener {
+            dialog.dismiss()
+            requestOverlayAndStartMiniBoard()
+        }
+
+        btnVision.setOnClickListener {
+            dialog.dismiss()
+            requestOverlayAndStartCapture()
+        }
+
+        btnStop.setOnClickListener {
+            dialog.dismiss()
+            stopAllServices()
+        }
+
+        dialog.show()
     }
 
 

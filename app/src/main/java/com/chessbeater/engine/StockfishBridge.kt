@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 
 /**
- * Sprint 64: StockfishBridge with MultiPV Humanization & Natural Move Delay.
+ * Sprint 98: StockfishBridge with Bullet Mode, Precise ELO Power Calibration & Scaled Thinking Time.
  */
 class StockfishBridge(private val context: Context) {
 
@@ -42,6 +42,9 @@ class StockfishBridge(private val context: Context) {
     var hasEngineCrashed: Boolean = false
         private set
 
+    @Volatile
+    private var lastConfiguredElo: Int? = null
+
     // Promise penampung hasil bestmove & handshake aktif
     private val pendingBestMoveDeferred = AtomicReference<CompletableDeferred<String>?>(null)
     private val readyOkDeferred = AtomicReference<CompletableDeferred<Boolean>?>(null)
@@ -61,6 +64,10 @@ class StockfishBridge(private val context: Context) {
         bridgeScope.launch {
             try {
                 if (process != null && isProcessAlive(process) && isEngineReady) return@launch
+                if (isJniMode && isEngineReady && StockfishNativeBridge.isInitialized()) {
+                    StockfishNativeBridge.resetGameStateOnly()
+                    return@launch
+                }
                 stopEngineInternal()
                 hasEngineCrashed = false
 
@@ -88,7 +95,7 @@ class StockfishBridge(private val context: Context) {
                             startSingleReaderLoop()
 
                             // Kirim inisialisasi awal dengan MultiPV 3
-                            val initBatch = "uci\nsetoption name MultiPV value 3\nsetoption name UCI_LimitStrength value true\nsetoption name UCI_Elo value 2200\nsetoption name Skill Level value 11\nsetoption name Threads value 2\nsetoption name Hash value 16\nisready\n"
+                            val initBatch = "uci\nsetoption name MultiPV value 3\nisready\n"
                             writer?.write(initBatch)
                             writer?.flush()
                             Log.d("StockfishNative", "UCI Init Batch Sent with MultiPV 3")
@@ -100,6 +107,9 @@ class StockfishBridge(private val context: Context) {
                             if (ready == true) {
                                 isEngineReady = true
                                 isJniMode = false
+                                lastConfiguredElo = null
+                                val targetElo = EngineSettingsManager.getTargetElo(context)
+                                applyEloConfiguration(targetElo, force = true)
                                 Log.d("StockfishInit", "✅ Single Stockfish Instance Aktif & Sinkron!")
                                 return@launch
                             }
@@ -112,7 +122,7 @@ class StockfishBridge(private val context: Context) {
 
                 // JNI C++ In-Process Fallback
                 if (StockfishNativeBridge.isNativeLoaded()) {
-                    val init = StockfishNativeBridge.nativeInitEngine()
+                    val init = StockfishNativeBridge.initializeEngineSafely()
                     if (init) {
                         isJniMode = true
                         isEngineReady = true
@@ -121,6 +131,9 @@ class StockfishBridge(private val context: Context) {
                         StockfishNativeBridge.nativeSendUciCommand("setoption name MultiPV value 3")
                         StockfishNativeBridge.nativeSendUciCommand("ucinewgame")
                         StockfishNativeBridge.nativeSendUciCommand("isready")
+                        lastConfiguredElo = null
+                        val targetElo = EngineSettingsManager.getTargetElo(context)
+                        applyEloConfiguration(targetElo, force = true)
                         startJniReaderLoop()
                         Log.d("StockfishInit", "✅ High-Speed JNI C++ Stockfish Engine Aktif!")
                         return@launch
@@ -208,6 +221,7 @@ class StockfishBridge(private val context: Context) {
             val selected = HumanizationEngine.selectHumanizedMove(candidatesList) ?: originalBest
 
             Log.d("Humanize", "🎯 Bestmove terpilih: $selected (Engine T1: $originalBest, Candidates: ${candidatesList.size})")
+            com.chessbeater.utils.AppLogger.log("ENGINE_UCI", "🎯 Stockfish BestMove: $selected (T1: $originalBest)")
             currentMultiPvCandidates.clear()
             pendingBestMoveDeferred.getAndSet(null)?.complete(selected)
         } else {
@@ -225,75 +239,165 @@ class StockfishBridge(private val context: Context) {
                     writer?.flush()
                 }
                 Log.d("StockfishNative", "UCI Command: $cmd")
+                com.chessbeater.utils.AppLogger.log("ENGINE_UCI", "➡️ UCI Command: $cmd")
             } catch (e: Exception) {
                 Log.e("StockfishBridge", "Gagal kirim command: $cmd", e)
             }
         }
     }
 
-    fun setElo(elo: Int) {
-        val skill = (((elo.coerceIn(1320, 3190) - 1320f) / (3190f - 1320f)) * 20f).toInt().coerceIn(0, 20)
-        val batch = "setoption name UCI_LimitStrength value true\nsetoption name UCI_Elo value $elo\nsetoption name Skill Level value $skill\nisready\n"
-        bridgeScope.launch {
-            try {
-                writer?.write(batch)
-                writer?.flush()
-            } catch (ignored: Exception) {}
+    /**
+     * Konfigurasi kekuatan engine presisi berdasarkan Target ELO.
+     */
+    fun applyEloConfiguration(targetElo: Int, force: Boolean = false) {
+        val clampedElo = targetElo.coerceIn(800, 3500)
+        if (!force && lastConfiguredElo == clampedElo && isEngineReady) {
+            Log.d("StockfishNative", "🎯 ELO $clampedElo sudah aktif, melewati konfigurasi redundan.")
+            return
         }
-    }
+        lastConfiguredElo = clampedElo
+        Log.d("StockfishNative", "🎯 Mengonfigurasi Engine Power: $clampedElo ELO")
 
-    fun setEloRating(elo: Int) = setElo(elo)
-
-    fun setMaxElo(maxElo: Int) {
-        if (maxElo >= 3400) {
-            applyFullStrengthMode()
+        if (clampedElo >= 2800) {
+            // KEKUATAN MAKSIMUM (3000 - 3500+ ELO): Matikan LimitStrength!
+            sendCommand("setoption name UCI_LimitStrength value false")
+            sendCommand("setoption name Skill Level value 20")
+            sendCommand("setoption name Threads value 2")
+            sendCommand("setoption name Hash value 32")
+            Log.d("StockfishNative", "🚀 Mode UNLIMITED MAX POWER Aktif (Skill Level 20, No Limit)")
         } else {
-            setElo(maxElo)
+            // MODE PEMBATASAN KEKUATAN (800 - 2799 ELO):
+            val skillLevel = ((clampedElo - 800) * 19 / (2800 - 800)).coerceIn(0, 19)
+            val uciElo = clampedElo.coerceIn(1320, 3190)
+
+            sendCommand("setoption name UCI_LimitStrength value true")
+            sendCommand("setoption name UCI_Elo value $uciElo")
+            sendCommand("setoption name Skill Level value $skillLevel")
+            sendCommand("setoption name Threads value 2")
+            sendCommand("setoption name Hash value 32")
+            Log.d("StockfishNative", "⚖️ Mode Terkalibrasi Aktif: ELO=$uciElo, SkillLevel=$skillLevel")
         }
+        sendCommand("isready")
     }
 
-    fun applyFullStrengthMode() {
-        val batch = "setoption name UCI_LimitStrength value false\nsetoption name Skill Level value 20\nsetoption name Threads value 2\nsetoption name Hash value 16\nisready\n"
-        bridgeScope.launch {
+    fun setElo(elo: Int) = applyEloConfiguration(elo)
+
+    fun setEloRating(elo: Int) = applyEloConfiguration(elo)
+
+    fun setMaxElo(maxElo: Int) = applyEloConfiguration(maxElo)
+
+    fun applyFullStrengthMode() = applyEloConfiguration(3500)
+
+    /**
+     * Memulai evaluasi posisi FEN dengan penskalaan movetime sesuai target ELO & Bullet Mode.
+     */
+    fun triggerEvaluation(
+        fen: String,
+        targetElo: Int = EngineSettingsManager.getTargetElo(context),
+        isBullet: Boolean = EngineSettingsManager.isBulletMode(context),
+        onResult: (String) -> Unit
+    ) {
+        val normalTime = when {
+            targetElo >= 3000 -> 1500
+            targetElo >= 2800 -> 1000
+            targetElo >= 2400 -> 700
+            targetElo >= 1800 -> 400
+            else -> 200
+        }
+        val moveTimeMs = if (isBullet) normalTime.coerceAtMost(1200) else normalTime
+
+        bridgeScope.launch(Dispatchers.IO) {
+            if (!isEngineHealthy()) {
+                startEngine()
+                delay(300)
+            }
+
+            applyEloConfiguration(targetElo)
+
+            currentMultiPvCandidates.clear()
+            val movePromise = CompletableDeferred<String>()
+            pendingBestMoveDeferred.set(movePromise)
+
+            sendCommand("stop")
+            sendCommand("position fen $fen")
+            sendCommand("go movetime $moveTimeMs")
+            com.chessbeater.utils.AppLogger.log("ENGINE_EVAL", "🔍 Evaluasi Posisi: FEN=$fen | ELO=$targetElo | Bullet=$isBullet | moveTime=${moveTimeMs}ms")
+
             try {
-                writer?.write(batch)
-                writer?.flush()
-            } catch (ignored: Exception) {}
+                withTimeout(moveTimeMs + 2500L) {
+                    val move = movePromise.await()
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        try {
+                            onResult(move)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in onResult callback", e)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in triggerEvaluation", e)
+                pendingBestMoveDeferred.set(null)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try {
+                        onResult("")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in onResult empty callback", e)
+                    }
+                }
+            }
         }
     }
 
-    suspend fun getBestMove(fen: String, moveTimeMs: Long = 400L): String? = withContext(Dispatchers.IO) {
+    suspend fun getBestMove(
+        fen: String,
+        moveTimeMs: Long? = null,
+        targetElo: Int? = null,
+        isBullet: Boolean? = null
+    ): String? = withContext(Dispatchers.IO) {
         if (!isEngineHealthy()) {
             startEngine()
             delay(300)
         }
 
+        val effectiveElo = targetElo ?: EngineSettingsManager.getTargetElo(context)
+        val effectiveBullet = isBullet ?: EngineSettingsManager.isBulletMode(context)
+        applyEloConfiguration(effectiveElo)
+
+        val normalTime: Long = when {
+            effectiveElo >= 3000 -> 1500L
+            effectiveElo >= 2800 -> 1000L
+            effectiveElo >= 2400 -> 700L
+            effectiveElo >= 1800 -> 400L
+            else -> 200L
+        }
+        val scaledTime: Long = if (effectiveBullet) normalTime.coerceAtMost(1200L) else normalTime
+        val effectiveMovetime: Long = moveTimeMs ?: scaledTime
+
         currentMultiPvCandidates.clear()
         val movePromise = CompletableDeferred<String>()
         pendingBestMoveDeferred.set(movePromise)
 
-        val effectiveMovetime = moveTimeMs.coerceAtLeast(300L)
-        val depthCmd = if (effectiveMovetime < 400L) "go depth 12" else "go movetime $effectiveMovetime"
+        val goCmd = "go movetime $effectiveMovetime"
 
         // Kirim paket evaluasi
         if (isJniMode) {
             StockfishNativeBridge.nativeSendUciCommand("stop")
             StockfishNativeBridge.nativeSendUciCommand("position fen $fen")
-            StockfishNativeBridge.nativeSendUciCommand(depthCmd)
+            StockfishNativeBridge.nativeSendUciCommand(goCmd)
         } else {
-            val batchCommand = "stop\nposition fen $fen\n$depthCmd\n"
+            val batchCommand = "stop\nposition fen $fen\n$goCmd\n"
             try {
                 writer?.write(batchCommand)
                 writer?.flush()
                 Log.d("StockfishNative", "UCI Batch Sent:\n$batchCommand")
             } catch (e: Exception) {
-                Log.e("StockfishBridge", "Gagal kirim batch command", e)
+                Log.e(TAG, "Gagal kirim batch command", e)
                 return@withContext null
             }
         }
 
         return@withContext try {
-            withTimeout(effectiveMovetime + 1500L) {
+            withTimeout(effectiveMovetime + 2500L) {
                 val move = movePromise.await()
                 if (move.isNotBlank()) {
                     hasEngineCrashed = false
@@ -310,11 +414,11 @@ class StockfishBridge(private val context: Context) {
                 } else null
             }
         } catch (e: TimeoutCancellationException) {
-            Log.w("StockfishBridge", "⚠️ Timeout evaluasi FEN: $fen")
+            Log.w(TAG, "⚠️ Timeout evaluasi FEN: $fen")
             pendingBestMoveDeferred.set(null)
             null
         } catch (e: Exception) {
-            Log.e("StockfishBridge", "Error saat await bestmove", e)
+            Log.e(TAG, "Error saat await bestmove", e)
             pendingBestMoveDeferred.set(null)
             null
         }
@@ -333,6 +437,7 @@ class StockfishBridge(private val context: Context) {
         writer = null
         reader = null
         isEngineReady = false
+        lastConfiguredElo = null
         currentMultiPvCandidates.clear()
     }
 

@@ -1,0 +1,4 @@
+/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/4z41286r/armeabi-v7a/CMakeFiles/chessbeater_engine.dir
+/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/4z41286r/armeabi-v7a/CMakeFiles/stockfish_bin.dir
+/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/4z41286r/armeabi-v7a/CMakeFiles/edit_cache.dir
+/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/4z41286r/armeabi-v7a/CMakeFiles/rebuild_cache.dir

@@ -3,4 +3,12 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="ic_launcher_background">#FF0B0E14</color>
+    <color name="background_dark">#FF0F172A</color>
+    <color name="surface_dark">#FF1E293B</color>
+    <color name="primary_emerald">#FF10B981</color>
+    <color name="primary_cyan">#FF00E5FF</color>
+    <color name="danger_red">#FFEF4444</color>
+    <color name="text_muted">#FF94A3B8</color>
+    <color name="nav_active">#FF00E5FF</color>
+    <color name="nav_inactive">#FF64748B</color>
 </resources>

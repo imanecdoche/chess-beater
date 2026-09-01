@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.chessbeater"
-        minSdk = 29
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
@@ -135,6 +135,12 @@ dependencies {
 
     // Jetpack DataStore Preferences (PRD Section 3)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Material Components & XML Support
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

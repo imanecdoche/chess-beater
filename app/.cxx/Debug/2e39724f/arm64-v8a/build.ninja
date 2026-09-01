@@ -52,7 +52,7 @@ build cmake_object_order_depends_target_chessbeater_engine: phony || CMakeFiles/
 build CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o: CXX_COMPILER__chessbeater_engine_Debug /media/fatihfarhat/New$ Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-bridge.cpp || cmake_object_order_depends_target_chessbeater_engine
   DEFINES = -DNO_PREFETCH -DUSE_NEON=2 -Dchessbeater_engine_EXPORTS
   DEP_FILE = CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o.d
-  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -fno-limit-debug-info  -fPIC -O3 -flto -fomit-frame-pointer -fno-exceptions -fno-rtti -Wall -Wextra -pthread -std=c++20
+  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -fno-limit-debug-info  -fPIC -O3 -flto -fomit-frame-pointer -fexceptions -frtti -Wall -Wextra -pthread -std=c++20
   OBJECT_DIR = CMakeFiles/chessbeater_engine.dir
   OBJECT_FILE_DIR = CMakeFiles/chessbeater_engine.dir
 
@@ -88,7 +88,7 @@ build cmake_object_order_depends_target_stockfish_bin: phony || CMakeFiles/stock
 build CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o: CXX_COMPILER__stockfish_bin_Debug /media/fatihfarhat/New$ Volume/PROJECTS/ChessBeater/app/src/main/cpp/stockfish-standalone.cpp || cmake_object_order_depends_target_stockfish_bin
   DEFINES = -DNO_PREFETCH -DUSE_NEON=2
   DEP_FILE = CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o.d
-  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -fno-limit-debug-info  -fPIE -O3 -flto -fomit-frame-pointer -fno-exceptions -fno-rtti -Wall -Wextra -pthread -std=c++20
+  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -fno-limit-debug-info  -fPIE -O3 -flto -fomit-frame-pointer -fexceptions -frtti -Wall -Wextra -pthread -std=c++20
   OBJECT_DIR = CMakeFiles/stockfish_bin.dir
   OBJECT_FILE_DIR = CMakeFiles/stockfish_bin.dir
 

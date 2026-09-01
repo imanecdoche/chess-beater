@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">Chess Beater</string>
-    <string name="accessibility_desc">Chess Beater Touch-Forwarding Assistant for auto moving chess pieces</string>
 </resources>

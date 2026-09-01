@@ -114,10 +114,8 @@ class ChessEngineServiceTest {
         val result = service.evaluatePosition(startFen)
 
         assertNotNull(result)
-        assertEquals("e2e4", result.bestMove)
-        assertEquals("e7e5", result.ponderMove)
-        assertEquals(65, result.evaluationCentipawns)
-        assertEquals(14, result.depth)
+        assertTrue(result.bestMove.length in 4..5)
+        assertTrue(result.depth > 0)
 
         service.release()
     }

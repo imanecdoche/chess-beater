@@ -804,36 +804,84 @@ extern "C" {
 
 JNIEXPORT jboolean JNICALL
 Java_com_chessbeater_engine_StockfishNativeBridge_nativeInitEngine(JNIEnv* /*env*/, jobject /*this*/) {
-    return static_cast<jboolean>(ChessBeater::EngineBridge::getInstance().initialize());
+    try {
+        static bool isAlreadyInitialized = false;
+        if (isAlreadyInitialized) {
+            LOGI("JNI: Engine already initialized previously, skipping.");
+            return JNI_TRUE;
+        }
+
+        bool success = ChessBeater::EngineBridge::getInstance().initialize();
+        if (success) {
+            isAlreadyInitialized = true;
+            LOGI("JNI: Engine initialized successfully for the first time.");
+        }
+        return static_cast<jboolean>(success);
+    } catch (const std::exception& e) {
+        LOGE("JNI nativeInitEngine std::exception: %s", e.what());
+        return JNI_FALSE;
+    } catch (...) {
+        LOGE("JNI nativeInitEngine unknown exception");
+        return JNI_FALSE;
+    }
 }
 
 JNIEXPORT jboolean JNICALL
 Java_com_chessbeater_engine_StockfishNativeBridge_nativeSendUciCommand(JNIEnv* env, jobject /*this*/, jstring command) {
-    if (!command) return JNI_FALSE;
-    const char* nativeString = env->GetStringUTFChars(command, nullptr);
-    std::string cmd(nativeString);
-    env->ReleaseStringUTFChars(command, nativeString);
+    try {
+        if (!command) return JNI_FALSE;
+        const char* nativeString = env->GetStringUTFChars(command, nullptr);
+        if (!nativeString) return JNI_FALSE;
+        std::string cmd(nativeString);
+        env->ReleaseStringUTFChars(command, nativeString);
 
-    return static_cast<jboolean>(ChessBeater::EngineBridge::getInstance().sendCommand(cmd));
+        return static_cast<jboolean>(ChessBeater::EngineBridge::getInstance().sendCommand(cmd));
+    } catch (const std::exception& e) {
+        LOGE("JNI nativeSendUciCommand std::exception: %s", e.what());
+        return JNI_FALSE;
+    } catch (...) {
+        LOGE("JNI nativeSendUciCommand unknown exception");
+        return JNI_FALSE;
+    }
 }
 
 JNIEXPORT jstring JNICALL
 Java_com_chessbeater_engine_StockfishNativeBridge_nativeReadEngineOutput(JNIEnv* env, jobject /*this*/) {
-    std::string line = ChessBeater::EngineBridge::getInstance().readOutput();
-    if (line.empty()) {
+    try {
+        std::string line = ChessBeater::EngineBridge::getInstance().readOutput();
+        if (line.empty()) {
+            return nullptr;
+        }
+        return env->NewStringUTF(line.c_str());
+    } catch (const std::exception& e) {
+        LOGE("JNI nativeReadEngineOutput std::exception: %s", e.what());
+        return nullptr;
+    } catch (...) {
+        LOGE("JNI nativeReadEngineOutput unknown exception");
         return nullptr;
     }
-    return env->NewStringUTF(line.c_str());
 }
 
 JNIEXPORT void JNICALL
 Java_com_chessbeater_engine_StockfishNativeBridge_nativeStopEvaluation(JNIEnv* /*env*/, jobject /*this*/) {
-    ChessBeater::EngineBridge::getInstance().stopEvaluation();
+    try {
+        ChessBeater::EngineBridge::getInstance().stopEvaluation();
+    } catch (const std::exception& e) {
+        LOGE("JNI nativeStopEvaluation std::exception: %s", e.what());
+    } catch (...) {
+        LOGE("JNI nativeStopEvaluation unknown exception");
+    }
 }
 
 JNIEXPORT void JNICALL
 Java_com_chessbeater_engine_StockfishNativeBridge_nativeDestroyEngine(JNIEnv* /*env*/, jobject /*this*/) {
-    ChessBeater::EngineBridge::getInstance().destroy();
+    try {
+        ChessBeater::EngineBridge::getInstance().destroy();
+    } catch (const std::exception& e) {
+        LOGE("JNI nativeDestroyEngine std::exception: %s", e.what());
+    } catch (...) {
+        LOGE("JNI nativeDestroyEngine unknown exception");
+    }
 }
 
 }

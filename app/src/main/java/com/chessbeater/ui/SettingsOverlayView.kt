@@ -218,13 +218,24 @@ class SettingsOverlayView(
             prefs.edit().putBoolean("highlight_is_filled", checked).apply()
         }
 
-        // --- SECTION: ENGINE ELO ---
-        addSectionHeader("⚡ Target Engine ELO")
-        val currentElo = prefs.getSafeInt("max_elo_rating", 3500)
-        addSliderItem("Kekuatan Engine", "${currentElo} ELO", (currentElo - 800) / 27, 100) { progress ->
-            val elo = 800 + (progress * 27)
-            prefs.edit().putInt("max_elo_rating", elo).apply()
-            "${elo} ELO"
+        // --- SECTION: ENGINE ELO & BULLET MODE ---
+        addSectionHeader("⚡ Target Engine ELO & Kecepatan")
+        val currentElo = com.chessbeater.engine.EngineSettingsManager.getTargetElo(context)
+        val isBullet = com.chessbeater.engine.EngineSettingsManager.isBulletMode(context)
+
+        addSwitchItem("⚡ Bullet Mode", "Batasi kalkulasi (max 1200ms) & Auto-Hide 1.0s", isBullet) { checked ->
+            com.chessbeater.engine.EngineSettingsManager.saveBulletMode(context, checked)
+            renderDisplayEngineTab()
+        }
+
+        val eloDesc = com.chessbeater.utils.EloInfoFormatter.formatEloDetails(currentElo, isBullet)
+        addSliderItem("Target Engine Power: [ $currentElo ELO ]\n$eloDesc", "$currentElo ELO", (currentElo - 800).coerceIn(0, 2700), 2700) { progress ->
+            val elo = (800 + progress).coerceIn(800, 3500)
+            com.chessbeater.engine.EngineSettingsManager.saveTargetElo(context, elo)
+            com.chessbeater.engine.StockfishBridge.getInstance(context).applyEloConfiguration(elo)
+            val currentBullet = com.chessbeater.engine.EngineSettingsManager.isBulletMode(context)
+            val desc = com.chessbeater.utils.EloInfoFormatter.formatEloDetails(elo, currentBullet)
+            "$elo ELO"
         }
 
         // --- SECTION: SKALA TOMBOL ---
@@ -253,43 +264,35 @@ class SettingsOverlayView(
         // --- SECTION: OTOMASI VISIBILITAS (AUTO HIDE & SHOW) ---
         addSectionHeader("⏱️ Otomasi Sembunyi / Tampil")
 
-        val isAutoHideEnabled = prefs.getBoolean("auto_hide_enabled", false)
-        val autoHideDelay = prefs.getSafeFloat("auto_hide_delay_sec", 5.0f).coerceIn(1.0f, 30.0f)
-        addSwitchItem("⏳ Auto-Hide Papan", "Sembunyi otomatis setelah rekomendasi muncul", isAutoHideEnabled) { checked ->
-            prefs.edit().putBoolean("auto_hide_enabled", checked)
-                .putInt("auto_hide_delay_sec", if (checked) autoHideDelay.toInt() else -1)
-                .apply()
+        val isAutoHideEnabled = com.chessbeater.engine.EngineSettingsManager.isAutoHideEnabled(context)
+        val autoHideDelay = com.chessbeater.engine.EngineSettingsManager.getAutoHideDelaySec(context)
+        addSwitchItem("⏳ Auto-Hide Papan", "Sembunyi otomatis setelah mesin selesai melangkah", isAutoHideEnabled) { checked ->
+            com.chessbeater.engine.EngineSettingsManager.saveAutoHideEnabled(context, checked)
             renderDisplayEngineTab()
         }
 
         if (isAutoHideEnabled) {
-            val progressAutoHide = (((autoHideDelay - 1.0f) / 0.5f).toInt()).coerceIn(0, 58)
-            addSliderItem("Durasi Auto-Hide", "${String.format("%.1f", autoHideDelay)} dtk", progressAutoHide, 58) { progress ->
-                val delaySec = 1.0f + (progress * 0.5f)
-                prefs.edit().putFloat("auto_hide_delay_sec", delaySec)
-                    .putInt("auto_hide_delay_sec", delaySec.toInt())
-                    .apply()
-                "${String.format("%.1f", delaySec)} dtk"
+            val progressAutoHide = (((autoHideDelay - 0.5f) / 0.5f).roundToInt()).coerceIn(0, 59)
+            addSliderItem("Durasi Auto-Hide", "[ ${String.format(java.util.Locale.US, "%.1f", autoHideDelay)} dtk ]", progressAutoHide, 59) { progress ->
+                val delaySec = 0.5f + (progress * 0.5f)
+                com.chessbeater.engine.EngineSettingsManager.saveAutoHideDelaySec(context, delaySec)
+                "[ ${String.format(java.util.Locale.US, "%.1f", delaySec)} dtk ]"
             }
         }
 
-        val isAutoShowEnabled = prefs.getBoolean("auto_show_enabled", false)
-        val autoShowDelay = prefs.getSafeFloat("auto_show_delay_sec", 3.0f).coerceIn(1.0f, 30.0f)
+        val isAutoShowEnabled = com.chessbeater.engine.EngineSettingsManager.isAutoShowEnabled(context)
+        val autoShowDelay = com.chessbeater.engine.EngineSettingsManager.getAutoShowDelaySec(context)
         addSwitchItem("✨ Auto-Show Papan", "Muncul kembali otomatis dari Floating Eye", isAutoShowEnabled) { checked ->
-            prefs.edit().putBoolean("auto_show_enabled", checked)
-                .putBoolean("is_auto_show_enabled", checked)
-                .apply()
+            com.chessbeater.engine.EngineSettingsManager.saveAutoShowEnabled(context, checked)
             renderDisplayEngineTab()
         }
 
         if (isAutoShowEnabled) {
-            val progressAutoShow = (((autoShowDelay - 1.0f) / 0.5f).toInt()).coerceIn(0, 58)
-            addSliderItem("Durasi Auto-Show", "${String.format("%.1f", autoShowDelay)} dtk", progressAutoShow, 58) { progress ->
-                val delaySec = 1.0f + (progress * 0.5f)
-                prefs.edit().putFloat("auto_show_delay_sec", delaySec)
-                    .putInt("auto_show_delay_sec", delaySec.toInt())
-                    .apply()
-                "${String.format("%.1f", delaySec)} dtk"
+            val progressAutoShow = (((autoShowDelay - 0.5f) / 0.5f).roundToInt()).coerceIn(0, 59)
+            addSliderItem("Durasi Auto-Show", "[ ${String.format(java.util.Locale.US, "%.1f", autoShowDelay)} dtk ]", progressAutoShow, 59) { progress ->
+                val delaySec = 0.5f + (progress * 0.5f)
+                com.chessbeater.engine.EngineSettingsManager.saveAutoShowDelaySec(context, delaySec)
+                "[ ${String.format(java.util.Locale.US, "%.1f", delaySec)} dtk ]"
             }
         }
 
@@ -504,9 +507,7 @@ class SettingsOverlayView(
             progress = initialProgress
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (fromUser) {
-                        tvVal.text = onProgressChanged(progress)
-                    }
+                    tvVal.text = onProgressChanged(progress)
                 }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
                 override fun onStopTrackingTouch(sb: SeekBar?) {

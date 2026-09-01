@@ -6,7 +6,6 @@ import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
 import com.chessbeater.data.CalibrationPreset
-import com.chessbeater.service.ChessAccessibilityService
 import kotlin.math.max
 import kotlin.math.min
 
@@ -124,13 +123,8 @@ class BoardCalibrationOverlayView(
             boardBox.set(left, top, left + defaultSize, top + defaultSize)
         }
 
-        detectedPackage = ChessAccessibilityService.currentForegroundPackage
-        presetDefaultName = when {
-            detectedPackage?.contains("chess", ignoreCase = true) == true -> "Chess.com Portrait"
-            detectedPackage?.contains("lichess", ignoreCase = true) == true -> "Lichess App"
-            detectedPackage != null -> "Preset ${detectedPackage!!.substringAfterLast('.')}"
-            else -> "Preset Papan Catur"
-        }
+        detectedPackage = null
+        presetDefaultName = "Preset Papan Catur"
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -333,7 +327,6 @@ class BoardCalibrationOverlayView(
 
                 // Check button taps
                 if (saveBtnBounds.contains(x, y)) {
-                    detectedPackage = ChessAccessibilityService.currentForegroundPackage
                     isSaveDialogOpen = true
                     invalidate()
                     return true

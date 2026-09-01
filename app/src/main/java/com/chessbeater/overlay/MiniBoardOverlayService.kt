@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.hardware.SensorManager
 import android.os.*
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlin.math.min
@@ -22,6 +23,7 @@ import com.chessbeater.data.PresetRepository
 import com.chessbeater.engine.ChessEngineService
 import com.chessbeater.engine.models.EngineConfig
 import com.chessbeater.util.*
+import com.chessbeater.utils.AppLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -206,7 +208,8 @@ class MiniBoardOverlayService : Service() {
             stockfishJob = serviceScope.launch(Dispatchers.IO) {
                 Log.d("StockfishSync", "Mengevaluasi FEN baru: $fen")
                 val bestMove = try {
-                    com.chessbeater.engine.StockfishBridge.getInstance(this@MiniBoardOverlayService).getBestMove(fen, 400L)
+                    val targetElo = com.chessbeater.engine.EngineSettingsManager.getTargetElo(this@MiniBoardOverlayService)
+                    com.chessbeater.engine.StockfishBridge.getInstance(this@MiniBoardOverlayService).getBestMove(fen, targetElo = targetElo)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error eval", e)
                     null
@@ -214,6 +217,7 @@ class MiniBoardOverlayService : Service() {
                 withContext(Dispatchers.Main) {
                     val result = if (bestMove != null) com.chessbeater.engine.models.EngineResult(bestMove = bestMove) else null
                     overlayManager?.updateInteractiveBoardEngineResult(result)
+                    onEngineTurnCompleted()
                 }
             }
         }
@@ -378,6 +382,8 @@ class MiniBoardOverlayService : Service() {
 
         overlayManager?.onEloRatingChanged = { newElo ->
             currentVisualPrefs = currentVisualPrefs.copy(eloRating = newElo)
+            com.chessbeater.engine.EngineSettingsManager.saveTargetElo(this@MiniBoardOverlayService, newElo)
+            com.chessbeater.engine.StockfishBridge.getInstance(this@MiniBoardOverlayService).applyEloConfiguration(newElo)
             chessEngineService.setEloRating(newElo)
             serviceScope.launch(Dispatchers.IO) {
                 BoardPreferencesRepository(this@MiniBoardOverlayService).saveEloRating(newElo)
@@ -418,7 +424,9 @@ class MiniBoardOverlayService : Service() {
 
         val initialRect = Rect(initialX, initialY, initialX + initialSizePx, initialY + initialSizePx)
 
-        chessEngineService.setEloRating(visualPrefs.eloRating)
+        val targetElo = com.chessbeater.engine.EngineSettingsManager.getTargetElo(this)
+        com.chessbeater.engine.StockfishBridge.getInstance(this).applyEloConfiguration(targetElo)
+        chessEngineService.setEloRating(targetElo)
 
         overlayManager?.showInteractiveBoard(
             boardSizeDp = (initialSizePx / resources.displayMetrics.density).toInt(),
@@ -427,7 +435,6 @@ class MiniBoardOverlayService : Service() {
             initialY = initialY,
             calibratedRect = initialRect,
             isGhostMode = prefs.isGhostMode,
-            isTouchForwarding = prefs.isTouchForwardingEnabled,
             isPiecesHiddenInGhostMode = prefs.isPiecesHiddenInGhostMode,
             arrowDurationMs = savedArrowDurationMs,
             gridAlpha = visualPrefs.gridAlpha,
@@ -519,6 +526,7 @@ class MiniBoardOverlayService : Service() {
         val interactiveView = overlayManager?.getInteractiveBoardView()
         interactiveView?.switchSideAndResetGame(opponentIsWhite)
         val modeText = if (opponentIsWhite) "Lawan Putih (Mesin Hitam Bawah)" else "Lawan Hitam (Mesin Putih Bawah)"
+        AppLogger.log("SERVICE", "⚔️ Ganti Sisi Catur: $modeText")
         Toast.makeText(this@MiniBoardOverlayService, "⚔️ Mode diatur: $modeText", Toast.LENGTH_SHORT).show()
     }
 
@@ -526,6 +534,8 @@ class MiniBoardOverlayService : Service() {
         savedBoardX = preset.x.toInt()
         savedBoardY = preset.y.toInt()
         savedBoardSizePx = preset.width.toInt()
+
+        AppLogger.log("SERVICE", "⚡ Menerapkan Preset Kalibrasi: ${preset.name} (${preset.width}px)")
 
         serviceScope.launch {
             val repo = PresetRepository(this@MiniBoardOverlayService)
@@ -705,7 +715,7 @@ class MiniBoardOverlayService : Service() {
         Log.d(TAG, "Restoring mini board from floating eye to original position ($savedBoardX, $savedBoardY, $savedBoardSizePx)")
         isEyeShowing = false
         isBoardShowing = true
-        overlayManager?.hideFloatingEye()
+        overlayManager?.hideFloatingEye(detachOnly = true)
         overlayManager?.restoreInteractiveBoard(savedBoardX, savedBoardY, savedBoardSizePx)
     }
 
@@ -856,12 +866,107 @@ class MiniBoardOverlayService : Service() {
         return START_NOT_STICKY
     }
 
+    enum class OverlayState { VISIBLE, HIDING, HIDDEN, SHOWING }
+    var currentOverlayState = OverlayState.VISIBLE
+        private set
+    private val autoTimerHandler = Handler(Looper.getMainLooper())
+
+    fun cancelPendingAutoTimers() {
+        autoTimerHandler.removeCallbacksAndMessages(null)
+        autoHideJob?.cancel()
+        autoShowJob?.cancel()
+        Log.d("OverlayLifecycle", "⏹️ Pending auto timers dibatalkan (User Action)")
+    }
+
+    // 1. Panggil saat mesin selesai jalan (Auto-Hide)
+    fun scheduleAutoHide(delayMs: Long) {
+        cancelPendingAutoTimers() // Bersihkan semua antrean lama!
+
+        if (overlayManager?.isInteractiveBoardShowing() != true) return
+
+        autoTimerHandler.postDelayed({
+            if (isAttachedToWindowSafe()) {
+                performSafeHide()
+            }
+        }, delayMs)
+    }
+
+    // 2. Eksekusi Hide yang Aman dari Crash
+    fun performSafeHide() {
+        try {
+            currentOverlayState = OverlayState.HIDDEN
+            currentHideReason = OverlayHideReason.AUTO_HIDE
+            isBoardShowing = false
+
+            // Tutup menu popup yang mungkin tertinggal
+            closeMainControlMenu()
+            closeSettingsOverlay()
+
+            overlayManager?.hideInteractiveBoard(detachOnly = true)
+            showFloatingEyeFromSaved()
+            Log.d("OverlayLifecycle", "🔒 Papan aman di-hide (State: HIDDEN)")
+            AppLogger.log("SERVICE", "🔒 Overlay Mini Board di-hide (Floating Eye aktif)")
+
+            // Jika Auto-Show aktif, jadwalkan Auto-Show berikutnya
+            val isAutoShow = com.chessbeater.engine.EngineSettingsManager.isAutoShowEnabled(this)
+            if (isAutoShow) {
+                val showDelaySec = com.chessbeater.engine.EngineSettingsManager.getAutoShowDelaySec(this)
+                scheduleAutoShow((showDelaySec * 1000).toLong())
+            }
+        } catch (e: Exception) {
+            Log.e("OverlayLifecycle", "Gagal hide overlay: ${e.message}", e)
+        }
+    }
+
+    // 3. Panggil untuk menjadwalkan Auto-Show
+    fun scheduleAutoShow(delayMs: Long) {
+        autoTimerHandler.postDelayed({
+            if (currentOverlayState == OverlayState.HIDDEN && currentHideReason == OverlayHideReason.AUTO_HIDE) {
+                performSafeShow()
+            }
+        }, delayMs)
+    }
+
+    // 4. Eksekusi Show yang Aman
+    fun performSafeShow() {
+        try {
+            currentOverlayState = OverlayState.VISIBLE
+            isBoardShowing = true
+            overlayManager?.hideFloatingEye(detachOnly = true)
+            overlayManager?.restoreInteractiveBoard(savedBoardX, savedBoardY, savedBoardSizePx)
+            overlayManager?.getInteractiveBoardView()?.apply {
+                visibility = View.VISIBLE
+                postInvalidate()
+            }
+            Log.d("OverlayLifecycle", "✨ Papan aman di-show kembali (State: VISIBLE)")
+            AppLogger.log("SERVICE", "✨ Overlay Mini Board di-show kembali")
+        } catch (e: Exception) {
+            Log.e("OverlayLifecycle", "Gagal show overlay: ${e.message}", e)
+        }
+    }
+
+    private fun isAttachedToWindowSafe(): Boolean {
+        val board = overlayManager?.getInteractiveBoardView()
+        return board != null && board.isAttachedToWindow
+    }
+
+    fun onEngineTurnCompleted() {
+        val isAutoHide = com.chessbeater.engine.EngineSettingsManager.isAutoHideEnabled(this)
+        if (isAutoHide && overlayManager?.isInteractiveBoardShowing() == true) {
+            val delaySec = com.chessbeater.engine.EngineSettingsManager.getAutoHideDelaySec(this)
+            scheduleAutoHide((delaySec * 1000).toLong())
+            Log.d("AutoHide", "⏳ Mesin selesai jalan. Auto-Hide dijadwalkan dalam ${delaySec}s")
+            AppLogger.log("SERVICE", "⏳ Mesin selesai jalan. Auto-Hide dijadwalkan dalam ${delaySec}s")
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         if (instance == this) {
             instance = null
         }
         isRunning = false
+        AppLogger.log("SERVICE", "🔴 MiniBoardOverlayService Dihentikan")
         stockfishJob?.cancel()
         autoShowJob?.cancel()
         autoDetectJob?.cancel()

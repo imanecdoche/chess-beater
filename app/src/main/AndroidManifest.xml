@@ -24,18 +24,20 @@
     <application
         android:name=".ChessBeaterApp"
         android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:theme="@style/Theme.ChessBeater">
 
 
         <!-- Main Dashboard Activity (PRD Section 6.1) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            android:theme="@style/Theme.ChessBeater">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -47,6 +49,13 @@
             android:name=".ui.SettingsActivity"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <!-- Arena Playground Activity -->
+        <activity
+            android:name=".playground.PlaygroundActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 
         <!-- Screen Capture MediaProjection Service -->
         <service
@@ -67,21 +76,6 @@
             android:name=".overlay.OverlayService"
             android:enabled="true"
             android:exported="false" />
-
-        <!-- Touch-Forwarding Accessibility Service (Sprint 30) -->
-        <service
-            android:name=".service.ChessAccessibilityService"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
 
     </application>
 

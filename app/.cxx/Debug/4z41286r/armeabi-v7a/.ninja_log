@@ -1,0 +1,5 @@
+# ninja log v5
+1	3492	1788237937396506400	CMakeFiles/chessbeater_engine.dir/stockfish-bridge.cpp.o	4471429e64144d85
+2	4320	1788237938219324000	CMakeFiles/stockfish_bin.dir/stockfish-standalone.cpp.o	86405165423695b8
+3538	5287	1788237939196206700	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/4z41286r/obj/armeabi-v7a/libchessbeater_engine.so	8465402dc7e084c9
+4325	5616	1788237939528984400	/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/build/intermediates/cxx/Debug/4z41286r/obj/armeabi-v7a/stockfish_bin	8311043429f4db12

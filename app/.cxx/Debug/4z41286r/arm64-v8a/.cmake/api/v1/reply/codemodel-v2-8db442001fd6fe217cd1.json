@@ -1,0 +1,69 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "chessbeater_engine",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "chessbeater_engine::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-chessbeater_engine-Debug-0b9548fa3ed4d52465dd.json",
+					"name" : "chessbeater_engine",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "stockfish_bin::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-stockfish_bin-Debug-411ef35f1a1826fdf4b1.json",
+					"name" : "stockfish_bin",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/.cxx/Debug/4z41286r/arm64-v8a",
+		"source" : "/media/fatihfarhat/New Volume/PROJECTS/ChessBeater/app/src/main/cpp"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

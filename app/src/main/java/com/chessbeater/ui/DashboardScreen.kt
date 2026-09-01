@@ -49,15 +49,15 @@ fun DashboardScreen(
     onToggleAutoLaunch: (Boolean) -> Unit = {},
     onToggleMiniBoard: (Boolean) -> Unit = {},
     onToggleGhostMode: (Boolean) -> Unit = {},
-    onToggleTouchForwarding: (Boolean) -> Unit = {},
     onToggleQuickAlignment: (Boolean) -> Unit = {},
     onToggleSaveSessionLogs: (Boolean) -> Unit = {},
     onDeleteLog: (java.io.File) -> Unit = {},
     onClearAllLogs: () -> Unit = {},
     onStartVisionServiceClicked: () -> Unit,
-    onStartMiniBoardServiceClicked: () -> Unit,
-    onStopServiceClicked: () -> Unit,
-    onOpenFullSettingsClicked: () -> Unit = {}
+    onStartMiniBoardServiceClicked: () -> Unit = {},
+    onStopServiceClicked: () -> Unit = {},
+    onOpenFullSettingsClicked: () -> Unit = {},
+    onOpenPlaygroundClicked: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var selectedLogFile by remember { mutableStateOf<java.io.File?>(null) }
@@ -279,6 +279,26 @@ fun DashboardScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Open Arena Playground Button
+            Button(
+                onClick = onOpenPlaygroundClicked,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1E293B)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676)),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text(
+                    text = "🎮 Masuk ke Arena Playground (Bot & Editor)",
+                    color = Color(0xFF00E676),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
 
@@ -432,13 +452,6 @@ fun DashboardScreen(
                         subtitle = "Petak transparan tipis menempel 1:1 di atas papan game asli",
                         isChecked = uiState.isGhostMode,
                         onCheckedChange = onToggleGhostMode
-                    )
-                    Divider(color = Color(0xFF232D3F), thickness = 1.dp)
-                    ToggleRow(
-                        title = "👆 Teruskan Sentuhan ke Game Asli (Touch Forwarding)",
-                        subtitle = "Sentuhan di papan mini otomatis diteruskan ke game catur di bawahnya",
-                        isChecked = uiState.isTouchForwardingEnabled,
-                        onCheckedChange = onToggleTouchForwarding
                     )
                     Divider(color = Color(0xFF232D3F), thickness = 1.dp)
                     ToggleRow(

@@ -14,7 +14,6 @@ import android.view.animation.PathInterpolator
 import android.widget.Toast
 import androidx.core.graphics.ColorUtils
 import com.chessbeater.data.CalibrationPreset
-import com.chessbeater.service.ChessAccessibilityService
 import com.chessbeater.engine.ChessLogic
 import com.chessbeater.engine.models.EngineResult
 import com.chessbeater.vision.models.PlayerColor
@@ -52,7 +51,6 @@ class InteractiveBoardOverlayView(
     var onOpenSettingsRequested: (() -> Unit)? = null,
     private var boardSizePx: Int = 600,
     var isGhostMode: Boolean = false,
-    var isTouchForwarding: Boolean = true,
     var isPiecesHiddenInGhostMode: Boolean = true,
     var arrowDurationMs: Long = 1000L,
     var gridAlpha: Float = 0.15f,
@@ -457,7 +455,8 @@ class InteractiveBoardOverlayView(
             highlightAlpha = prefs.getSafeFloat("highlight_alpha", 0.50f)
             floatingEyeAlpha = prefs.getSafeFloat("floating_eye_alpha", 0.85f)
             moveGuideAlpha = prefs.getSafeFloat("move_guide_alpha", 0.80f)
-            maxEloRating = prefs.getSafeInt("max_elo_rating", 3500)
+            maxEloRating = com.chessbeater.engine.EngineSettingsManager.getTargetElo(context)
+            eloRating = maxEloRating
             sizeHeaderEyeDp = prefs.getSafeInt("size_header_eye_dp", 34)
             sizeHeaderMenuDp = prefs.getSafeInt("size_header_menu_dp", 34)
             isBoardLocked = prefs.getSafeBoolean("board_is_locked", true)
@@ -519,7 +518,8 @@ class InteractiveBoardOverlayView(
             highlightAlpha = prefs.getSafeFloat("alpha_highlights", prefs.getSafeFloat("highlight_alpha", 0.50f)).coerceIn(0.05f, 1.0f)
             floatingEyeAlpha = prefs.getSafeFloat("alpha_floating_eye", prefs.getSafeFloat("floating_eye_alpha", 0.85f)).coerceIn(0.05f, 1.0f)
             moveGuideAlpha = prefs.getSafeFloat("alpha_dots", prefs.getSafeFloat("move_guide_alpha", prefs.getSafeFloat("guide_dots_alpha", 0.80f))).coerceIn(0.05f, 1.0f)
-            maxEloRating = prefs.getSafeInt("max_elo_rating", 3500)
+            maxEloRating = com.chessbeater.engine.EngineSettingsManager.getTargetElo(context)
+            eloRating = maxEloRating
             sizeHeaderEyeDp = prefs.getSafeInt("size_header_eye_dp", 34)
             sizeHeaderMenuDp = prefs.getSafeInt("size_header_menu_dp", 34)
             isBoardLocked = prefs.getSafeBoolean("board_is_locked", true)
@@ -584,6 +584,7 @@ class InteractiveBoardOverlayView(
 
     private fun notifyVisualPrefsChanged() {
         try {
+            com.chessbeater.engine.EngineSettingsManager.saveTargetElo(context, maxEloRating)
             context.getSharedPreferences("chessbeater_visual_prefs", Context.MODE_PRIVATE).edit().apply {
                 putFloat("piece_alpha", pieceAlpha)
                 putFloat("grid_alpha", gridAlpha)
@@ -592,7 +593,9 @@ class InteractiveBoardOverlayView(
                 putFloat("floating_eye_alpha", floatingEyeAlpha)
                 putFloat("overlay_alpha", overlayAlpha)
                 putFloat("move_guide_alpha", moveGuideAlpha)
+                putInt("target_elo", maxEloRating)
                 putInt("max_elo_rating", maxEloRating)
+                putInt("elo_rating", maxEloRating)
                 putBoolean("highlight_is_filled", isHighlightFilled)
                 putInt("color_highlight_from", fromSquareColor)
                 putInt("color_highlight_to", toSquareColor)
@@ -629,6 +632,48 @@ class InteractiveBoardOverlayView(
 
     val isCorrectionModeActive: Boolean
         get() = isCorrectionMode
+
+    fun isHeaderActive(): Boolean = (!isGhostControlsEnabled || isCorrectionMode)
+    fun isCorrectionActive(): Boolean = isCorrectionModeActive
+
+    fun getInteractiveBoundingRect(): android.graphics.Rect {
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        return android.graphics.Rect(
+            (location[0] + boardBounds.left).toInt(),
+            (location[1] + boardBounds.top).toInt(),
+            (location[0] + boardBounds.right).toInt(),
+            (location[1] + boardBounds.bottom).toInt()
+        )
+    }
+
+    fun getHeaderBoundingRect(): android.graphics.Rect {
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        val l = location[0]
+        val t = location[1]
+        val rect = RectF(headerBounds)
+        rect.union(btnMenuBounds)
+        rect.union(btnEyeBounds)
+        rect.union(statusBounds)
+        return android.graphics.Rect(
+            (l + rect.left).toInt(),
+            (t + rect.top).toInt(),
+            (l + rect.right).toInt(),
+            (t + rect.bottom).toInt()
+        )
+    }
+
+    fun getCorrectionPanelBoundingRect(): android.graphics.Rect {
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        return android.graphics.Rect(
+            (location[0] + correctionPanelBounds.left).toInt(),
+            (location[1] + correctionPanelBounds.top).toInt(),
+            (location[0] + correctionPanelBounds.right).toInt(),
+            (location[1] + correctionPanelBounds.bottom).toInt()
+        )
+    }
 
     fun setupCorrectionLayoutMetrics(customTop: Float? = null) {
         val density = resources.displayMetrics.density
@@ -1042,6 +1087,7 @@ class InteractiveBoardOverlayView(
                 .putFloat("board_bottom", rect.bottom)
                 .apply()
         } catch (ignored: Exception) {}
+        requestLayout()
         postInvalidate()
     }
 
@@ -1057,6 +1103,7 @@ class InteractiveBoardOverlayView(
                 .putFloat("board_bottom", boardRect.bottom)
                 .apply()
         } catch (ignored: Exception) {}
+        requestLayout()
         postInvalidate()
     }
 
@@ -1067,7 +1114,9 @@ class InteractiveBoardOverlayView(
         if (isCorrectionMode) return
 
         val bestMove = result?.bestMove?.takeIf { it.length >= 4 && it != "0000" } ?: run {
-            Toast.makeText(context, "⚠️ Engine tidak merespons, input langkah manual", Toast.LENGTH_SHORT).show()
+            if (isAttachedToWindow && visibility == View.VISIBLE) {
+                Toast.makeText(context, "⚠️ Engine tidak merespons, input langkah manual", Toast.LENGTH_SHORT).show()
+            }
             postInvalidate()
             return
         }
@@ -1090,6 +1139,7 @@ class InteractiveBoardOverlayView(
 
         // Trigger Auto-Hide hanya setelah Stockfish selesai evaluasi dan panah terlihat
         triggerAutoHideIfNeeded()
+        postInvalidate()
     }
 
     fun applyEngineMove(uciMove: String) {
@@ -1851,9 +1901,12 @@ class InteractiveBoardOverlayView(
             SliderType.ELO_RATING -> {
                 val elo = (800 + progress * (3500 - 800)).roundToInt()
                 eloRating = elo // Update UI real-time
+                maxEloRating = elo
                 eloDebounceJob?.cancel()
                 eloDebounceJob = viewScope.launch {
                     delay(250L)
+                    com.chessbeater.engine.EngineSettingsManager.saveTargetElo(context, elo)
+                    com.chessbeater.engine.StockfishBridge.getInstance(context).applyEloConfiguration(elo)
                     onEloRatingChanged?.invoke(elo)
                     Log.d("SettingsDebounce", "⚡ ELO resmi disetel ke Engine: $elo")
                 }
@@ -1861,9 +1914,12 @@ class InteractiveBoardOverlayView(
             SliderType.MAX_ELO_RATING -> {
                 val elo = (800 + progress * (3500 - 800)).roundToInt()
                 maxEloRating = elo
+                eloRating = elo
                 maxEloDebounceJob?.cancel()
                 maxEloDebounceJob = viewScope.launch {
                     delay(250L)
+                    com.chessbeater.engine.EngineSettingsManager.saveTargetElo(context, elo)
+                    com.chessbeater.engine.StockfishBridge.getInstance(context).applyEloConfiguration(elo)
                     onEloRatingChanged?.invoke(elo)
                     notifyVisualPrefsChanged()
                     Log.d("SettingsDebounce", "🔥 MAX ELO resmi disetel: $elo")
@@ -2128,6 +2184,7 @@ class InteractiveBoardOverlayView(
                 lastTouchY = event.rawY
                 isDragging = false
                 autoHideJob?.cancel()
+                MiniBoardOverlayService.instance?.cancelPendingAutoTimers()
 
                 // Tangani tap petak catur
                 handleBoardTap(clicked)
@@ -2155,13 +2212,8 @@ class InteractiveBoardOverlayView(
             }
 
             MotionEvent.ACTION_UP -> {
-                val distSq = (event.rawX - rawDownX) * (event.rawX - rawDownX) + (event.rawY - rawDownY) * (event.rawY - rawDownY)
-                val isTap = !isDragging && distSq < (touchSlop * touchSlop)
-
-                if (!isTap && isDragging) {
+                if (isDragging) {
                     isDragging = false
-                } else if (!isTap && isTouchForwarding) {
-                    ChessAccessibilityService.forwardDrag(rawDownX, rawDownY, event.rawX, event.rawY, 150L)
                 }
                 return true
             }
@@ -2343,15 +2395,6 @@ class InteractiveBoardOverlayView(
                         val bCol = if (isBoardFlipped) 7 - col else col
                         val sq = bRow * 8 + bCol
                         handleBoardTap(sq)
-                    }
-                } else {
-                    // Manual drag / swipe on board touch forwarding (only when menu is closed & not in editor)
-                    if (!isMenuOpen && !isCorrectionMode && isTouchForwarding && boardRect.contains(rawDownX, rawDownY)) {
-                        if (distSq < 20f * 20f) {
-                            ChessAccessibilityService.forwardClick(rawDownX, rawDownY)
-                        } else {
-                            ChessAccessibilityService.forwardDrag(rawDownX, rawDownY, rawUpX, rawUpY, 150L)
-                        }
                     }
                 }
                 isDragging = false
@@ -2677,21 +2720,6 @@ class InteractiveBoardOverlayView(
             snapshotHistory.removeFirst()
         }
         snapshotHistory.addLast(createCurrentSnapshot())
-
-        // Touch-Forwarding to underlying chess app via Accessibility Service
-        if (!isStockfish && isTouchForwarding) {
-            val sqW = boardRect.width() / 8f
-            val sqH = boardRect.height() / 8f
-            val (fromDispCol, fromDispRow) = sq2dispCR(from)
-            val (toDispCol, toDispRow) = sq2dispCR(to)
-
-            val fromX = boardRect.left + (fromDispCol + 0.5f) * sqW
-            val fromY = boardRect.top + (fromDispRow + 0.5f) * sqH
-            val toX = boardRect.left + (toDispCol + 0.5f) * sqW
-            val toY = boardRect.top + (toDispRow + 0.5f) * sqH
-
-            ChessAccessibilityService.forwardDrag(fromX, fromY, toX, toY, 150L)
-        }
 
         val targetPiece = board[to]
         val isCapture = targetPiece != '.'

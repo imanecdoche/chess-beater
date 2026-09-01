@@ -12,8 +12,8 @@ if(ANDROID_ABI STREQUAL "arm64-v8a")
         -O3
         -flto
         -fomit-frame-pointer
-        -fno-exceptions
-        -fno-rtti
+        -fexceptions
+        -frtti
         -Wall
         -Wextra
         -pthread
@@ -26,8 +26,8 @@ elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
         -mfpu=neon
         -mfloat-abi=softfp
         -fomit-frame-pointer
-        -fno-exceptions
-        -fno-rtti
+        -fexceptions
+        -frtti
         -Wall
         -Wextra
         -pthread
@@ -38,6 +38,8 @@ else()
         -O3
         -flto
         -fomit-frame-pointer
+        -fexceptions
+        -frtti
         -Wall
         -Wextra
         -pthread

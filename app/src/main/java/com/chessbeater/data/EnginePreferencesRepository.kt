@@ -30,7 +30,6 @@ data class AppUserPreferences(
     val miniBoardPosX: Int = 40,
     val miniBoardPosY: Int = 180,
     val isGhostMode: Boolean = false,
-    val isTouchForwardingEnabled: Boolean = true,
     val isPiecesHiddenInGhostMode: Boolean = true
 ) {
     fun toEngineConfig(): EngineConfig = EngineConfig(engineType, powerPercentage)
@@ -60,7 +59,6 @@ class EnginePreferencesRepository(private val context: Context) {
         val KEY_MINI_BOARD_POS_X = intPreferencesKey("key_mini_board_pos_x")
         val KEY_MINI_BOARD_POS_Y = intPreferencesKey("key_mini_board_pos_y")
         val KEY_IS_GHOST_MODE = booleanPreferencesKey("key_is_ghost_mode")
-        val KEY_IS_TOUCH_FORWARDING = booleanPreferencesKey("key_is_touch_forwarding")
         val KEY_IS_PIECES_HIDDEN_GHOST = booleanPreferencesKey("key_is_pieces_hidden_ghost")
     }
 
@@ -101,7 +99,6 @@ class EnginePreferencesRepository(private val context: Context) {
             val miniX = preferences[KEY_MINI_BOARD_POS_X] ?: 40
             val miniY = preferences[KEY_MINI_BOARD_POS_Y] ?: 180
             val isGhost = preferences[KEY_IS_GHOST_MODE] ?: false
-            val isTouchForward = preferences[KEY_IS_TOUCH_FORWARDING] ?: true
             val isPiecesHiddenGhost = preferences[KEY_IS_PIECES_HIDDEN_GHOST] ?: true
 
             AppUserPreferences(
@@ -121,7 +118,6 @@ class EnginePreferencesRepository(private val context: Context) {
                 miniBoardPosX = miniX,
                 miniBoardPosY = miniY,
                 isGhostMode = isGhost,
-                isTouchForwardingEnabled = isTouchForward,
                 isPiecesHiddenInGhostMode = isPiecesHiddenGhost
             )
         }
@@ -209,12 +205,6 @@ class EnginePreferencesRepository(private val context: Context) {
     suspend fun updateGhostMode(isGhost: Boolean) {
         dataStore.edit { preferences ->
             preferences[KEY_IS_GHOST_MODE] = isGhost
-        }
-    }
-
-    suspend fun updateTouchForwarding(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[KEY_IS_TOUCH_FORWARDING] = enabled
         }
     }
 

@@ -9,6 +9,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import com.chessbeater.engine.models.EngineResult
 import com.chessbeater.vision.models.PlayerColor
@@ -45,24 +46,26 @@ class OverlayManager(private val context: Context) {
 
     var onCalibrationRequested: (() -> Unit)? = null
     var onPlayerColorToggleRequested: (() -> Unit)? = null
-    var onMiniBoardEvaluationRequested: ((fen: String) -> Unit)? = null
+
+    // Callbacks for Interactive Mini Board
+    var onMiniBoardEvaluationRequested: ((String) -> Unit)? = null
     var onMiniBoardThinkingTimeChanged: ((Long) -> Unit)? = null
-    var onMiniBoardArrowDurationChanged: ((Long) -> Unit)? = null
-    var onMiniBoardToggleVisibilityRequested: ((hide: Boolean, reason: OverlayHideReason) -> Unit)? = null
-    var onMiniBoardPositionChanged: ((x: Int, y: Int) -> Unit)? = null
-    var onMiniBoardSizeChanged: ((sizePx: Int) -> Unit)? = null
+    var onMiniBoardPositionChanged: ((Int, Int) -> Unit)? = null
+    var onFloatingEyePositionChanged: ((Int, Int) -> Unit)? = null
+    var onMiniBoardSizeChanged: ((Int) -> Unit)? = null
     var onMiniBoardSnapToCalibrationRequested: (() -> Unit)? = null
     var onStartCalibrationRequested: (() -> Unit)? = null
     var onPresetSelected: ((com.chessbeater.data.CalibrationPreset) -> Unit)? = null
     var onMiniBoardSavePositionToPresetRequested: (() -> Unit)? = null
-    var onMiniBoardClosed: (() -> Unit)? = null
-    var onFloatingEyePositionChanged: ((x: Int, y: Int) -> Unit)? = null
-    var onFloatingEyeClicked: (() -> Unit)? = null
-    var onFloatingEyeLongPressed: (() -> Unit)? = null
+    var onMiniBoardArrowDurationChanged: ((Long) -> Unit)? = null
+    var onMiniBoardToggleVisibilityRequested: ((Boolean, OverlayHideReason) -> Unit)? = null
     var onMiniBoardVisualPreferencesChanged: ((com.chessbeater.data.BoardVisualPreferences) -> Unit)? = null
     var onMiniBoardClickThroughModeToggled: ((Boolean) -> Unit)? = null
+    var onFloatingEyeLongPressed: (() -> Unit)? = null
+    var onFloatingEyeClicked: (() -> Unit)? = null
     var onAutoDetectionToggled: ((Boolean) -> Unit)? = null
     var onEloRatingChanged: ((Int) -> Unit)? = null
+    var onMiniBoardClosed: (() -> Unit)? = null
 
     companion object {
         private const val TAG = "OverlayManager"
@@ -105,14 +108,14 @@ class OverlayManager(private val context: Context) {
                 arrowLayoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = 0
                 y = 0
+                alpha = 1.0f
             }
 
             boardArrowView = BoardArrowOverlayView(context)
@@ -132,12 +135,14 @@ class OverlayManager(private val context: Context) {
                 hudLayoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = 60
                 y = 200
+                alpha = 1.0f
             }
 
             floatingHudView = FloatingHudView(
@@ -191,7 +196,6 @@ class OverlayManager(private val context: Context) {
         initialY: Int = 180,
         calibratedRect: Rect? = null,
         isGhostMode: Boolean = false,
-        isTouchForwarding: Boolean = true,
         isPiecesHiddenInGhostMode: Boolean = true,
         arrowDurationMs: Long = 1000L,
         gridAlpha: Float = 0.15f,
@@ -217,7 +221,6 @@ class OverlayManager(private val context: Context) {
                     initialY,
                     calibratedRect,
                     isGhostMode,
-                    isTouchForwarding,
                     isPiecesHiddenInGhostMode,
                     arrowDurationMs,
                     gridAlpha,
@@ -257,7 +260,7 @@ class OverlayManager(private val context: Context) {
             val touchableFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
                     (if (isClickThroughMode) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0)
 
             interactiveBoardParams = WindowManager.LayoutParams(
@@ -270,6 +273,7 @@ class OverlayManager(private val context: Context) {
                 gravity = Gravity.TOP or Gravity.START
                 x = 0
                 y = 0
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
@@ -314,7 +318,6 @@ class OverlayManager(private val context: Context) {
                 },
                 boardSizePx = boardSizePx,
                 isGhostMode = isGhostMode,
-                isTouchForwarding = isTouchForwarding,
                 isPiecesHiddenInGhostMode = isPiecesHiddenInGhostMode,
                 arrowDurationMs = arrowDurationMs,
                 gridAlpha = gridAlpha,
@@ -332,10 +335,14 @@ class OverlayManager(private val context: Context) {
             )
 
             if (startHidden) {
+                interactiveBoardView?.visibility = View.GONE
                 isInteractiveBoardShowing = false
-                Log.i(TAG, "Interactive Mini-Chessboard initialized in HIDDEN mode (ready for Floating Eye restore)")
+                Log.i(TAG, "Interactive Mini-Chessboard initialized in HIDDEN mode")
             } else {
-                windowManager.addView(interactiveBoardView, interactiveBoardParams)
+                interactiveBoardView?.visibility = View.VISIBLE
+                if (interactiveBoardView?.isAttachedToWindow == false) {
+                    windowManager?.addView(interactiveBoardView, interactiveBoardParams)
+                }
                 isInteractiveBoardShowing = true
                 Log.i(TAG, "Interactive Mini-Chessboard displayed in Fullscreen Overlay (calibrated=${calibratedRect != null}, ghost=$isGhostMode, arrowDur=${arrowDurationMs}ms, autoHide=${autoHideDelaySec}s, clickThrough=$isClickThroughMode)")
             }
@@ -377,13 +384,15 @@ class OverlayManager(private val context: Context) {
             mainHandler.post { restoreInteractiveBoard(posX, posY, sizePx) }
             return
         }
-        hideFloatingEye()
+        hideFloatingEye(detachOnly = true)
         val view = interactiveBoardView
-        if (view != null && !isInteractiveBoardShowing && windowManager != null) {
+        if (view != null && windowManager != null) {
             try {
                 view.reloadBoardBounds()
                 val targetRect = android.graphics.RectF(posX.toFloat(), posY.toFloat(), (posX + sizePx).toFloat(), (posY + sizePx).toFloat())
                 view.updateBoardRect(targetRect)
+                view.visibility = View.VISIBLE
+
                 val params = interactiveBoardParams ?: run {
                     val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -398,21 +407,28 @@ class OverlayManager(private val context: Context) {
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                         PixelFormat.TRANSLUCENT
                     ).apply {
                         gravity = Gravity.TOP or Gravity.START
                         x = 0
                         y = 0
+                        alpha = 1.0f
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                         }
                     }
                 }
                 interactiveBoardParams = params
-                windowManager.addView(view, params)
+                if (!view.isAttachedToWindow) {
+                    windowManager?.addView(view, params)
+                } else {
+                    windowManager?.updateViewLayout(view, params)
+                }
+                view.requestLayout()
+                view.postInvalidate()
                 isInteractiveBoardShowing = true
-                Log.i(TAG, "Interactive Mini-Chessboard restored in Fullscreen Overlay")
+                Log.i(TAG, "Interactive Mini-Chessboard restored")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restore Interactive Mini-Chessboard", e)
             }
@@ -434,9 +450,51 @@ class OverlayManager(private val context: Context) {
             mainHandler.post { showFloatingEye(initialX, initialY, eyeSizeDp, floatingEyeAlpha, onLongPressed, onClick) }
             return
         }
-        if (isFloatingEyeShowing || windowManager == null || !canDrawOverlays(context)) return
+        if (isFloatingEyeShowing && floatingEyeView?.isAttachedToWindow == true) return
 
         try {
+            val view = floatingEyeView
+            if (view != null) {
+                if (view.isAttachedToWindow) {
+                    view.visibility = View.VISIBLE
+                    floatingEyeParams?.let { params ->
+                        params.x = initialX
+                        params.y = initialY
+                        try {
+                            windowManager?.updateViewLayout(view, params)
+                        } catch (ignored: Exception) {}
+                    }
+                    view.requestLayout()
+                    view.postInvalidate()
+                } else {
+                    val params = floatingEyeParams ?: WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                        else
+                            @Suppress("DEPRECATION")
+                            WindowManager.LayoutParams.TYPE_PHONE,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                        PixelFormat.TRANSLUCENT
+                    ).apply {
+                        gravity = Gravity.TOP or Gravity.START
+                        x = initialX
+                        y = initialY
+                        alpha = 1.0f
+                    }
+                    floatingEyeParams = params
+                    view.visibility = View.VISIBLE
+                    windowManager?.addView(view, params)
+                }
+                isFloatingEyeShowing = true
+                Log.i(TAG, "FloatingEyeToggleView shown")
+                return
+            }
+
             val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -450,12 +508,14 @@ class OverlayManager(private val context: Context) {
                 layoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = initialX
                 y = initialY
+                alpha = 1.0f
             }
 
             floatingEyeView = FloatingEyeToggleView(
@@ -467,7 +527,7 @@ class OverlayManager(private val context: Context) {
                         floatingEyeView?.let { v ->
                             if (v.isAttachedToWindow) {
                                 try {
-                                    windowManager.updateViewLayout(v, params)
+                                    windowManager?.updateViewLayout(v, params)
                                     onFloatingEyePositionChanged?.invoke(params.x, params.y)
                                 } catch (e: Exception) {
                                     Log.w(TAG, "Error updating floating eye layout", e)
@@ -488,7 +548,7 @@ class OverlayManager(private val context: Context) {
                 floatingEyeAlpha = floatingEyeAlpha
             )
 
-            windowManager.addView(floatingEyeView, floatingEyeParams)
+            windowManager?.addView(floatingEyeView, floatingEyeParams)
             isFloatingEyeShowing = true
             Log.i(TAG, "FloatingEyeToggleView attached at ($initialX, $initialY) size=${eyeSizeDp}dp alpha=$floatingEyeAlpha")
         } catch (e: Exception) {
@@ -500,24 +560,29 @@ class OverlayManager(private val context: Context) {
     /**
      * Hides the Floating Eye Toggle overlay
      */
-    fun hideFloatingEye() {
+    fun hideFloatingEye(detachOnly: Boolean = false) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            mainHandler.post { hideFloatingEye() }
+            mainHandler.post { hideFloatingEye(detachOnly) }
             return
         }
-        if (!isFloatingEyeShowing) return
+        if (!isFloatingEyeShowing && floatingEyeView?.isAttachedToWindow != true) return
         try {
             floatingEyeView?.let {
+                it.visibility = View.GONE
                 if (it.isAttachedToWindow) {
-                    windowManager?.removeView(it)
+                    windowManager?.removeViewImmediate(it)
                 }
-                floatingEyeView = null
+                if (!detachOnly) {
+                    floatingEyeView = null
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error removing floating eye view", e)
         } finally {
             isFloatingEyeShowing = false
-            floatingEyeParams = null
+            if (!detachOnly) {
+                floatingEyeParams = null
+            }
         }
     }
 
@@ -547,12 +612,13 @@ class OverlayManager(private val context: Context) {
             mainHandler.post { hideInteractiveBoard(detachOnly) }
             return
         }
-        if (!isInteractiveBoardShowing) return
+        if (!isInteractiveBoardShowing && interactiveBoardView?.isAttachedToWindow != true) return
         hideAllDialogs()
         try {
             interactiveBoardView?.let {
+                it.visibility = View.GONE
                 if (it.isAttachedToWindow) {
-                    windowManager?.removeView(it)
+                    windowManager?.removeViewImmediate(it)
                 }
                 if (!detachOnly) {
                     interactiveBoardView = null
@@ -645,12 +711,13 @@ class OverlayManager(private val context: Context) {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = 0
                 y = 0
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
@@ -737,12 +804,13 @@ class OverlayManager(private val context: Context) {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = 0
                 y = 0
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
@@ -818,13 +886,16 @@ class OverlayManager(private val context: Context) {
                 dialogWidth,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = (boardBounds.centerX() - dialogWidth / 2f).toInt()
                 y = (boardBounds.centerY() - (110 * density)).toInt().coerceAtLeast((40 * density).toInt())
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
@@ -935,13 +1006,16 @@ class OverlayManager(private val context: Context) {
                 widthPx,
                 heightPx,
                 layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = boardBounds.left.toInt()
                 y = boardBounds.top.toInt()
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
@@ -1049,13 +1123,16 @@ class OverlayManager(private val context: Context) {
                 widthPx,
                 heightPx,
                 layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = boardBounds.left.toInt()
                 y = boardBounds.top.toInt()
+                alpha = 1.0f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }

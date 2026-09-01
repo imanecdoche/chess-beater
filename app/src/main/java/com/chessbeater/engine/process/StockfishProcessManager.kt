@@ -16,7 +16,7 @@ import java.io.*
  * communicating purely through stdin / stdout pipes without JNI thread-lock issues.
  */
 class StockfishProcessManager(
-    private val context: Context = runCatching { ChessBeaterApp.instance }.getOrNull() ?: null as Context
+    private val context: Context? = runCatching { ChessBeaterApp.instance }.getOrNull()
 ) {
 
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -71,7 +71,7 @@ class StockfishProcessManager(
 
         // 2. High-Performance C++ Stockfish Native Engine
         if (com.chessbeater.engine.StockfishNativeBridge.isNativeLoaded()) {
-            val initSuccess = com.chessbeater.engine.StockfishNativeBridge.nativeInitEngine()
+            val initSuccess = com.chessbeater.engine.StockfishNativeBridge.initializeEngineSafely()
             if (initSuccess) {
                 isNativeMode = true
                 isFallbackMode = false

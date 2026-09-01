@@ -20,7 +20,6 @@ data class DashboardUiState(
     val miniBoardSizeDp: Int = 220,
     val miniBoardOpacity: Float = 0.94f,
     val isGhostMode: Boolean = false,
-    val isTouchForwardingEnabled: Boolean = true,
     val powerPercentage: Int = 100,
     val showCanvasArrow: Boolean = true,
     val showFloatingHud: Boolean = true,
@@ -86,7 +85,6 @@ class DashboardViewModel(
                         miniBoardSizeDp = prefs.miniBoardSizeDp,
                         miniBoardOpacity = prefs.miniBoardOpacity,
                         isGhostMode = prefs.isGhostMode,
-                        isTouchForwardingEnabled = prefs.isTouchForwardingEnabled,
                         powerPercentage = prefs.powerPercentage,
                         showCanvasArrow = prefs.showCanvasArrow,
                         showFloatingHud = prefs.showFloatingHud,
@@ -110,7 +108,6 @@ class DashboardViewModel(
     fun toggleAutoLaunch(autoLaunch: Boolean) = viewModelScope.launch { preferencesRepository.updateAutoLaunch(autoLaunch) }
     fun toggleInteractiveMiniBoard(show: Boolean) = viewModelScope.launch { preferencesRepository.updateMiniBoardVisibility(show) }
     fun toggleGhostMode(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateGhostMode(enabled) }
-    fun toggleTouchForwarding(enabled: Boolean) = viewModelScope.launch { preferencesRepository.updateTouchForwarding(enabled) }
     fun setPowerPercentage(power: Int) = viewModelScope.launch { preferencesRepository.updatePowerPercentage(power) }
     fun toggleCanvasArrow(show: Boolean) = viewModelScope.launch { preferencesRepository.updateCanvasArrow(show) }
     fun toggleFloatingHud(show: Boolean) = viewModelScope.launch { preferencesRepository.updateFloatingHud(show) }

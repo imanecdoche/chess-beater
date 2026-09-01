@@ -1,6 +1,8 @@
 package com.chessbeater
 
 import android.app.Application
+import com.chessbeater.utils.AppLogger
+import com.chessbeater.utils.GlobalCrashHandler
 
 class ChessBeaterApp : Application() {
     companion object {
@@ -12,11 +14,7 @@ class ChessBeaterApp : Application() {
         super.onCreate()
         instance = this
 
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            android.util.Log.e("ChessBeaterCrash", "FATAL UNCAUGHT EXCEPTION on thread ${thread.name}: ${throwable.message}", throwable)
-            defaultHandler?.uncaughtException(thread, throwable)
-        }
+        AppLogger.init(this)
+        GlobalCrashHandler.install()
     }
 }
-

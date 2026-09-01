@@ -961,3 +961,293 @@ File ini adalah catatan instruksi dan aturan mutlak untuk proyek **Chess Beater*
       * Dilarang mengutak-atik logika validasi catur di luar mode koreksi.
       * Touch pass-through normal game tetap bekerja 100% saat bukan mode koreksi.
 
+97. **Sprint 97 (2026-08-31): Refaktor UI MainActivity ke Bottom Navigation Bar, Center Floating Action Button (CTA), & Action Sheet**
+    - Layout MainActivity (`activity_main.xml`):
+      * Menggunakan `CoordinatorLayout`, `ComposeView` / container, `BottomAppBar` (`#1E293B`), dan Center `FloatingActionButton` (`fabStartServiceCta`, `#10B981`).
+    - Menu Navigasi Bawah (`bottom_nav_menu.xml`):
+      * 4 item navigasi: Target App (`nav_target_app`), Engine (`nav_engine`), placeholder tengah (`nav_placeholder`), Presets (`nav_presets`), dan Pengaturan (`nav_settings`).
+    - Center FAB Action Sheet:
+      * Menampilkan BottomSheet / Action Sheet untuk opsi Start Vision Overlay Service atau Start Interactive Mini Board Service atau Hentikan Service.
+    - Guardrails Keselamatan:
+      * Dilarang mengubah/merusak `ChessGameController.kt`, `StockfishNative`, dan file JNI engine.
+      * Dilarang mengubah touch pass-through overlay.
+      * Seluruh preferensi SharedPreferences tetap terjaga konsistensinya.
+
+
+
+
+98. **Sprint 98 (2026-09-01): Sinkronisasi Total Slider ELO, Bullet Mode, & Timer Auto-Hide/Show**
+    - Standarisasi Kunci SharedPreferences (`chess_beater_prefs` / `chessbeater_visual_prefs`):
+      * `engine_target_elo` (Int, 800 - 3500, Default: 2800)
+      * `engine_bullet_mode` (Boolean, Default: false)
+      * `auto_hide_enabled` (Boolean, Default: false)
+      * `auto_hide_delay_sec` (Float, Default: 3.0f, Step: 0.5f, Range: 0.5s - 30.0s)
+      * `auto_show_enabled` (Boolean, Default: false)
+      * `auto_show_delay_sec` (Float, Default: 1.5f, Step: 0.5f, Range: 0.5s - 30.0s)
+    - Helper Deskripsi ELO Dinamis (`EloInfoFormatter.kt`):
+      * Menyediakan `formatEloDetails(elo, isBullet)` dengan kategori level, depth, ply, dan Max Think time.
+    - Sinkronisasi UI Slider ELO & Bullet Mode (`SettingsActivity.kt`, `SettingsOverlayView.kt`, `InteractiveBoardOverlayView.kt`):
+      * Menampilkan title dan deskripsi dinamis real-time saat slider digeser.
+      * Saat Bullet Mode aktif: set otomatis Auto-Hide & Auto-Show ke 1.0s dan batasi max thinking time ke 1200ms.
+    - Trigger Auto-Hide Eksklusif Giliran Mesin (`MiniBoardOverlayService.kt` / `InteractiveBoardOverlayView.kt`):
+      * Auto-Hide HANYA aktif setelah langkah/evaluasi mesin selesai. User move tidak memicu timer auto-hide.
+    - Guardrails Keselamatan:
+      * DILARANG MENGUBAH / MERUSAK alur touch pass-through pada `InteractiveBoardOverlayView.dispatchTouchEvent()`.
+      * DILARANG MERUSAK validasi langkah catur legal FIDE.
+      * DILARANG memanggil `resetGame()` saat membuka/menutup dialog pengaturan.
+      * Gunakan nama key SharedPreferences yang identik 100% antara Activity dan Overlay.
+
+99. **Sprint 99 (2026-09-01): Implementasi Arena Playground Terisolasi (PlaygroundActivity.kt)**
+    - Arsitektur Terisolasi (`com.chessbeater.playground`):
+      * DILARANG mengubah/merusak `MiniBoardOverlayService.kt` dan `InteractiveBoardOverlayView.kt`.
+      * DILARANG merusak bridge Stockfish di `StockfishBridge.kt`.
+    - Modul Playground:
+      * `PlaygroundController.kt`: State management independen untuk 3 mode (`USER_VS_ENGINE`, `ENGINE_VS_ENGINE`, `BOARD_EDITOR`).
+      * `PlaygroundActivity.kt` / `activity_playground.xml`: Antarmuka pertandingan interaktif dengan Eval bar, switch mode, kontrol duel bot (Dual ELO sliders & speed delay), dan FEN editor palet bidak.
+      * Papan catur mandiri (`PlaygroundBoardView.kt` / Compose / Custom View).
+      * Integrasi entri masuk dari `MainActivity.kt` atau menu dashboard.
+      * Registrasi di `AndroidManifest.xml`.
+
+100. **Sprint 100 (2026-09-01): Proteksi Crash Lifecycle Timer Auto-Hide/Show & State Machine Bullet Mode**
+    - State Machine & Atomic Reset Timer (`MiniBoardOverlayService.kt`):
+      * Gunakan `OverlayState { VISIBLE, HIDING, HIDDEN, SHOWING }` dan `currentOverlayState`.
+      * `autoTimerHandler.removeCallbacksAndMessages(null)` membersihkan semua antrean lama sebelum menjadwalkan `scheduleAutoHide()` atau `scheduleAutoShow()`.
+      * Proteksi `isAttachedToWindowSafe()` sebelum melakukan operasi WindowManager/visibility.
+    - Proteksi Callback Stockfish di Main Thread (`StockfishBridge.kt` & `InteractiveBoardOverlayView.kt`):
+      * Callback hasil Stockfish diposkan aman ke `Looper.getMainLooper()`.
+      * Render panah rekomendasi dilindungi guard `isAttachedToWindow && visibility == View.VISIBLE`.
+    - Pembatalan Antrean Timer saat User Interaksi Touch (`InteractiveBoardOverlayView.kt`):
+      * Saat `ACTION_DOWN` pada bidak catur, batalkan seluruh pending timer auto-hide/show agar papan tidak hilang di tengah gesture.
+    - Guardrails Keselamatan:
+      * DILARANG MERUSAK validasi langkah catur legal FIDE di `ChessGameController.kt`.
+      * DILARANG MERUSAK alur touch pass-through (`return false`) di `InteractiveBoardOverlayView.kt`.
+
+101. **Sprint 101 (2026-09-01): Proteksi SIGABRT Native JNI & Singleton Mutlak Stockfish Engine**
+    - Kunci Inisialisasi Native Menjadi Singleton Mutlak (`StockfishNativeBridge.kt` / `StockfishProcessManager.kt`):
+      * `isEngineInitialized = AtomicBoolean(false)` & `synchronized(initLock)` untuk mencegah pemanggilan ulang `nativeInitEngine`.
+      * Native declarations aman dari race condition atau multiple thread inits.
+    - Lifecycle Reset Tanpa Re-Init (`ChessEngineService.kt` / `StockfishBridge.kt`):
+      * DILARANG memanggil ulang `nativeInitEngine()` / `startProcess()` saat ganti game/side/ELO.
+      * HANYA kirim perintah UCI: `stop`, `ucinewgame`, `isready` via `resetGameStateOnly()`.
+    - Exception Handler di JNI C++ Wrapper (`stockfish_bridge.cpp`):
+      * Seluruh entry point JNI (`nativeInitEngine`, `nativeSendUciCommand`, `nativeReadEngineOutput`, `nativeDestroyEngine`) dibungkus `try ... catch (const std::exception& e) ... catch (...)` dan `static bool isAlreadyInitialized = false`.
+      * Mencegah `std::terminate()` dan sinyal `SIGABRT` pada C++ runtime.
+    - Guardrails Keselamatan:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MERUSAK fungsi touch pass-through di `InteractiveBoardOverlayView.dispatchTouchEvent()`.
+
+102. **Sprint 102 (2026-09-01): Perbaikan Tema AppCompat / MaterialComponents pada PlaygroundActivity**
+    - Deklarasi Tema di `AndroidManifest.xml`:
+      * `android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar"` dan `android:screenOrientation="portrait"`.
+    - Fallback Theme di `PlaygroundActivity.kt`:
+      * Panggil `setTheme(com.google.android.material.R.style.Theme_MaterialComponents_DayNight_NoActionBar)` sebelum `super.onCreate()`.
+    - Guardrails Keselamatan:
+      * HANYA perbaiki tema PlaygroundActivity di AndroidManifest.xml dan PlaygroundActivity.kt.
+      * DILARANG MENGUBAH file overlay, engine, atau controller catur lainnya.
+
+103. **Sprint 103 (2026-09-01): Sambungkan Eksekusi Langkah Mesin (handleEngineMove) & Sinkronisasi FEN Overlay**
+    - Callback BestMove ke Controller (`StockfishBridge.kt` / `ChessEngineService.kt`):
+      * Saat baris `bestmove` diterima, parse move string (`from`, `to`, `promo`), kirim ke `Handler(Looper.getMainLooper())` untuk memanggil `chessGameController.handleEngineMove(from, to, promo)`.
+    - Eksekusi Langkah Mesin di State Controller (`ChessGameController.kt`):
+      * `handleEngineMove(from, to, promotion)`: Gambar panah, perbarui FEN catur menggunakan `ChessFenUtils.updateFenAfterMove()`, alihkan giliran ke user, panggil `notifyState()`, dan picu `onEngineMoveFinished()`.
+    - Sinkronisasi Render Grid View (`InteractiveBoardOverlayView.kt`):
+      * `onGameStateChanged` / `onEngineResult`: Pastikan FEN dan grid internal selalu diperbarui (`parseFenToRenderGrid(newFen)` / `postInvalidate()`) tanpa terblokir status window.
+    - Guardrails Keselamatan:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MENGUBAH alur touch pass-through (`return false`) di `InteractiveBoardOverlayView.dispatchTouchEvent()`.
+
+104. **Sprint 104 (2026-09-01): Sistem AppLogger Mandiri, Global Crash Handler, Auto Config Tracker, & Ekspor Log SAF**
+    - Modul AppLogger Mandiri (`AppLogger.kt`):
+      * Background single thread executor untuk non-blocking IO.
+      * Format timestamp milidetik `yyyy-MM-dd HH:mm:ss.SSS`.
+      * Ekspor log ke URI Storage Access Framework (SAF) via `exportLogToUri()`.
+      * Pembersihan log lokal via `clearLogs()`.
+    - Global Crash Handler (`GlobalCrashHandler.kt`):
+      * Tangkap UncaughtExceptionHandler dan catat stack trace ke `AppLogger.log("FATAL_CRASH", ...)`.
+      * Terpasang di `ChessBeaterApp.onCreate()`.
+    - Auto Config Tracker SharedPreferences:
+      * Listener `OnSharedPreferenceChangeListener` mencatat perubahan setiap nilai slider/setting ke log.
+    - Logging Event Utama:
+      * Service Lifecycle, Stockfish Bridge UCI commands & output, Game flow move FENs, Navigasi UI.
+    - Tombol Ekspor & Bersihkan Log di `SettingsActivity.kt` & `activity_settings.xml`:
+      * `ActivityResultContracts.CreateDocument("text/plain")` untuk simpan file `.txt`.
+    - Guardrails Keselamatan:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MERUSAK alur touch pass-through di `InteractiveBoardOverlayView.dispatchTouchEvent()`.
+      * Penulisan log ke file WAJIB berjalan di background thread (Non-blocking IO).
+
+105. **Sprint 105 (2026-09-01): Standardisasi PrefKeys Terpusat, Real-Time SeekBar Binding, & Sinkronisasi SharedPreferences**
+    - File Konstanta Key Terpusat (`PrefKeys.kt`):
+      * `PREF_NAME = "chess_beater_prefs"`
+      * `KEY_ENGINE_ELO = "engine_target_elo"` (Int, 800 - 3500)
+      * `KEY_BULLET_MODE = "engine_bullet_mode"` (Boolean)
+      * `KEY_AUTO_HIDE_ENABLED = "auto_hide_enabled"` (Boolean)
+      * `KEY_AUTO_HIDE_SEC = "auto_hide_delay_sec"` (Float, 0.5f - 30.0f, step 0.5f)
+      * `KEY_AUTO_SHOW_ENABLED = "auto_show_enabled"` (Boolean)
+      * `KEY_AUTO_SHOW_SEC = "auto_show_delay_sec"` (Float, 0.5f - 30.0f, step 0.5f)
+      * Visual Alpha Keys: `alpha_pieces`, `board_alpha`, `alpha_arrows`, `alpha_highlights`, `alpha_dots`.
+    - Rumus Konversi & Listener Real-Time Auto-Hide / Show:
+      * Range: 0.5s - 30.0s (59 steps, max=59), `detik = 0.5f + (progress * 0.5f)`, `progress = ((detik - 0.5f) / 0.5f).roundToInt().coerceIn(0, 59)`.
+      * Update teks seketika saat `onProgressChanged` dan simpan langsung ke `PrefKeys.PREF_NAME`.
+    - Rumus Konversi & Listener Real-Time ELO:
+      * Range: 800 - 3500 (max=2700), `elo = 800 + progress`, `progress = (elo - 800).coerceIn(0, 2700)`.
+      * Update label & `EloInfoFormatter.formatEloDetails()` seketika di `onProgressChanged`.
+    - Sinkronisasi saat `onResume()` dan buka menu:
+      * Seluruh slider membaca nilai tersimpan terbaru dari `PrefKeys.PREF_NAME`.
+    - Guardrails Keselamatan:
+      * DILARANG MERUSAK logika validasi langkah di `ChessGameController.kt`.
+      * DILARANG MENGUBAH alur touch pass-through di `InteractiveBoardOverlayView.dispatchTouchEvent()`.
+
+106. **Sprint 106 (2026-09-01): Precision Touchable Region Insets & Perfect Touch Pass-Through**
+    - Implementasi `OnComputeInternalInsetsListener` via refleksi di `MiniBoardOverlayService.kt` / `OverlayManager.kt` pada root view overlay:
+      * Set insets type ke `TOUCHABLE_INSETS_REGION` (nilai konstanta = 3).
+      * `touchableRegion.setEmpty()` dan `union()` hanya dengan `getInteractiveBoundingRect()`, `getHeaderBoundingRect()`, `getCorrectionPanelBoundingRect()`, dan `floatingEyeView`.
+    - Helper Rect Dimensi di `InteractiveBoardOverlayView.kt`:
+      * `getInteractiveBoundingRect()`
+      * `getHeaderBoundingRect()`
+      * `getCorrectionPanelBoundingRect()`
+      * `isHeaderActive()` dan `isCorrectionActive()`
+    - Hit-Testing `dispatchTouchEvent(event)` di `InteractiveBoardOverlayView.kt`:
+      * Jika sentuhan di luar `boardBounds`, `headerBounds`, dan `correctionPanelBounds` $\rightarrow$ `return false` (tembus ke layar utama/game catur).
+    - WindowManager Flags di `MiniBoardOverlayService.kt`:
+      * `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL or FLAG_LAYOUT_IN_SCREEN or FLAG_LAYOUT_NO_LIMITS`.
+    - Guardrails:
+      * DILARANG MERUSAK logika catur di `ChessGameController.kt`.
+      * DILARANG MERUSAK mode koreksi papan di `InteractiveBoardOverlayView.kt`.
+
+107. **Sprint 107 (2026-09-01): Touch Forwarding via Android AccessibilityService (dispatchGesture)**
+    - Konfigurasi XML Aksesibilitas (`res/xml/accessibility_service_config.xml`):
+      * `canPerformGestures="true"`, `canRetrieveWindowContent="false"`, `accessibilityFeedbackType="feedbackGeneric"`.
+      * String resource `@string/accessibility_service_desc` di `strings.xml`.
+    - Service Aksesibilitas Mandiri (`com.chessbeater.service.ChessAccessibilityService.kt`):
+      * `injectDragGesture(fromX, fromY, toX, toY, durationMs = 120L)` & `injectTapGesture(x, y)` menggunakan `dispatchGesture`.
+      * DILARANG memanggil ulang `nativeInitEngine()` di lifecycle `ChessAccessibilityService`.
+    - Deklarasi di `AndroidManifest.xml`:
+      * Service dengan permission `android.permission.BIND_ACCESSIBILITY_SERVICE` dan meta-data `android.accessibilityservice`.
+    - Forwarding Langkah di `InteractiveBoardOverlayView.kt`:
+      * Saat langkah legal selesai dieksekusi di `InteractiveBoardOverlayView`, hitung koordinat layar `from` & `to` lalu panggil `ChessAccessibilityService.instance?.injectDragGesture(...)`.
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MEMANGGIL ulang `nativeInitEngine()` di lifecycle AccessibilityService.
+
+108. **Sprint 108 (2026-09-01): Android 14/15 Modern SDK (35), Trusted Overlay Flags, & Accessibility Optimization**
+    - Perbarui SDK Version di `app/build.gradle.kts` / `app/build.gradle`:
+      * `compileSdk = 35`, `targetSdk = 35`.
+    - Bersihkan & Standarisasi Flags WindowManager Overlay (`OverlayManager.kt` / `MiniBoardOverlayService.kt`):
+      * Hapus `FLAG_LAYOUT_NO_LIMITS` yang memicu peringatan untrusted touch di Android 14+.
+      * Konfigurasi flag: `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL or FLAG_LAYOUT_IN_SCREEN`.
+      * Atur `alpha = 1.0f` pada Android 12+ (Build.VERSION_CODES.S) untuk toleransi untrusted touch.
+    - Perbarui Konfigurasi Aksesibilitas (`accessibility_service_config.xml`):
+      * `android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"`
+      * `android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews"`
+      * `android:notificationTimeout="50"`
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur di `ChessGameController.kt`.
+      * DILARANG MERUSAK fungsi gesture di `ChessAccessibilityService.kt`.
+
+109. **Sprint 109 (2026-09-01): Samsung Untrusted Touch Warning Fix & Zero-Delay Accessibility Configuration**
+    - Konfigurasi Aksesibilitas Zero-Delay (`res/xml/accessibility_service_config.xml`):
+      * `android:accessibilityEventTypes=""` (Kosongkan seluruh event listener agar Samsung InputManager tidak menunda sentuhan).
+      * `android:accessibilityFlags="flagDefault"`
+      * `android:notificationTimeout="0"`
+      * `android:canPerformGestures="true"`, `android:canRetrieveWindowContent="false"`.
+    - Optimasi WindowManager Flags Overlay (`OverlayManager.kt` / `MiniBoardOverlayService.kt`):
+      * Hapus `FLAG_NOT_TOUCH_MODAL` yang memicu sistem Untrusted Touch Samsung pada overlay fullscreen.
+      * Konfigurasi bersih: `FLAG_NOT_FOCUSABLE or FLAG_LAYOUT_IN_SCREEN`.
+      * Tetapkan `alpha = 1.0f` secara mutlak (transparansi dikelola di Canvas Paint).
+    - Optimasi AndroidManifest (`AndroidManifest.xml`):
+      * Tambahkan `android:hardwareAccelerated="true"` dan `android:largeHeap="true"` pada tag `<application>`.
+    - Guardrails:
+      * DILARANG MERUSAK fungsi `dispatchGesture()` di `ChessAccessibilityService.kt`.
+      * DILARANG MERUSAK validasi langkah catur di `ChessGameController.kt`.
+
+110. **Sprint 110 (2026-09-01): Removal of Touch Forwarding / AccessibilityService & Full Overlay Cleanup**
+    - Hapus total `ChessAccessibilityService`:
+      * Hapus file `app/src/main/java/com/chessbeater/service/ChessAccessibilityService.kt`.
+      * Hapus file `app/src/main/res/xml/accessibility_service_config.xml`.
+      * Hapus deklarasi service di `AndroidManifest.xml`.
+    - Bersihkan `InteractiveBoardOverlayView.kt`:
+      * Hapus `ChessAccessibilityService.instance?.injectDragGesture(...)` dan method `onUserMoveCompleted()`.
+      * Kembalikan alur catur normal tanpa gesture injection.
+    - Bersihkan Izin & Dialog Aksesibilitas:
+      * Hapus `checkAndPromptAccessibilityPermission()` dan dialog terkait di `MainActivity.kt` / fragment.
+    - WindowManager Flags Standar:
+      * Konfigurasi bersih: `FLAG_NOT_FOCUSABLE or FLAG_LAYOUT_IN_SCREEN` dengan `alpha = 1.0f`.
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MERUSAK integrasi singleton Stockfish di `StockfishBridge.kt`.
+
+111. **Sprint 111 (2026-09-01): Final Verification & Clean Build of Overlay Services (Zero Accessibility Remains)**
+    - Verifikasi `AndroidManifest.xml`:
+      * Pastikan tag `<service ... BIND_ACCESSIBILITY_SERVICE>` 100% bersih.
+      * Pastikan service overlay standar (`MiniBoardOverlayService`, `OverlayService`, `ScreenCaptureService`) terkonfigurasi benar.
+    - Verifikasi repositori:
+      * File `ChessAccessibilityService.kt` dan `accessibility_service_config.xml` telah terhapus total.
+    - Build & Deploy:
+      * Jalankan `./gradlew assembleDebug` dan `./gradlew installDebug`.
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MERUSAK fungsi engine Stockfish di `StockfishBridge.kt`.
+
+112. **Sprint 112 (2026-09-01): Single-Window Persistent Container Architecture (Eliminating Add/Remove View Churn)**
+    - Arsitektur Single-Window (`OverlayManager.kt` / `MiniBoardOverlayService.kt`):
+      * Pasang WindowManager HANYA 1 kali di `onCreate()` dan lepas 1 kali di `onDestroy()`.
+      * DILARANG memanggil `windowManager.addView()` atau `removeView()` saat hide/show/restore overlay.
+      * Saat hide: `boardOverlayView.visibility = View.GONE`, `floatingEyeView.visibility = View.VISIBLE`.
+      * Saat show: `floatingEyeView.visibility = View.GONE`, `boardOverlayView.visibility = View.VISIBLE`.
+      * Flags: `FLAG_NOT_FOCUSABLE or FLAG_LAYOUT_IN_SCREEN or FLAG_HARDWARE_ACCELERATED`, `alpha = 1.0f`.
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur legal di `ChessGameController.kt`.
+      * DILARANG MERUSAK integrasi Singleton Stockfish di `StockfishBridge.kt`.
+      * DILARANG memanggil `windowManager.addView()` atau `removeView()` saat hide/show overlay.
+
+113. **Sprint 113 (2026-09-01): Samsung One UI Full Compatibility WindowManager Alignment & Clean Install**
+    - Target SDK & Compile SDK di `app/build.gradle.kts`:
+      * `compileSdk = 35`, `targetSdk = 35`, `minSdk = 26` (atau 29).
+    - WindowManager LayoutParams Modern:
+      * `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL or FLAG_LAYOUT_IN_SCREEN or FLAG_HARDWARE_ACCELERATED`, `alpha = 1.0f`.
+    - AndroidManifest.xml:
+      * 100% bersih tanpa ada BIND_ACCESSIBILITY_SERVICE.
+    - Clean Uninstall & Install:
+      * `adb uninstall com.chessbeater.debug`
+      * `./gradlew assembleDebug`
+      * `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+    - Guardrails:
+      * DILARANG MERUSAK validasi langkah catur di `ChessGameController.kt`.
+      * DILARANG MERUSAK Stockfish singleton di `StockfishBridge.kt`.
+
+114. **Sprint 114 (2026-09-01): Samsung One UI Overlay Touch Latency Elimination & Guardrail Enforcement**
+    - Target SDK & Compile SDK:
+      * `compileSdk = 35`, `targetSdk = 35`, `minSdk = 26`.
+    - WindowManager LayoutParams Overlay Modern (`MiniBoardOverlayService.kt` / `OverlayManager.kt`):
+      * `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL or FLAG_LAYOUT_IN_SCREEN or FLAG_HARDWARE_ACCELERATED`, `alpha = 1.0f`.
+      * Gravity: `Gravity.TOP or Gravity.START`.
+      * LayoutType: `TYPE_APPLICATION_OVERLAY`.
+      * Format: `PixelFormat.TRANSLUCENT`.
+    - Manifest & Clean Permissions:
+      * Seluruh jejak accessibility permission (`BIND_ACCESSIBILITY_SERVICE`) dan service aksesibilitas 100% bersih.
+    - Build & Install Clean via ADB:
+      * `adb uninstall com.chessbeater.debug`
+      * `./gradlew assembleDebug`
+      * `./gradlew installDebug`
+    - Guardrails Mutlak:
+      * DILARANG MERUSAK validasi langkah catur di `ChessGameController.kt`.
+      * DILARANG MERUSAK Stockfish singleton di `StockfishBridge.kt`.
+      * HANYA sesuaikan parameter WindowManager di `MiniBoardOverlayService.kt` dan pastikan target SDK 35 di `build.gradle`.
+
+115. **Sprint 115 (2026-09-01): Comprehensive Untrusted Touch / Touch-Forwarding Audit & Elimination**
+    - Audit & Log Monitoring:
+      * Pantau logcat realtime saat aplikasi dibuka dan service overlay dinyalakan.
+      * Selidiki penyebab persis pesan sistem "tidak dioptimalkan untuk Android terbaru, sentuhan mungkin tertunda atau tidak dikenali" / untrusted touch / tapjacking protection / touch occlusion.
+    - Hapus Touch Forwarding Total:
+      * Hapus seluruh sisa fungsi `touch forwarding` / `isTouchForwarding` / `touch forwarding logic` dari seluruh aplikasi.
+      * Pastikan overlay WindowManager tidak menutupi layar penuh saat tidak perlu, atau ukuran window overlay persis sesuai komponen (atau terkonfigurasi benar dengan touch flags / touchable region yang legal di Android 12-15).
+    - Guardrails Mutlak:
+      * DILARANG MERUSAK validasi langkah catur di `ChessGameController.kt`.
+      * DILARANG MERUSAK Stockfish singleton di `StockfishBridge.kt`.
+      * Pertahankan logika fundamental game catur.
+
+116. **Sprint 116 (2026-09-01): SSH Config Application & Git Push**
+    - Pastikan direktori ~/.ssh terkonfigurasi dengan permission 700.
+    - Terapkan konfigurasi SSH dari `githubsshconfig.txt` ke `~/.ssh/config` dengan permission 600.
+    - Stage seluruh perubahan (`git add .`), commit dengan pesan "Auto-commit oleh AI agent", dan push ke `origin main`.
